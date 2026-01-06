@@ -4,6 +4,7 @@ import 'package:scanai_app/core/utils/ui_helper.dart';
 import 'package:scanai_app/core/constants/app_constants.dart';
 import 'package:scanai_app/presentation/state/camera_state.dart';
 import 'package:scanai_app/presentation/widgets/detection_overlay.dart';
+import 'package:scanai_app/presentation/widgets/connection_overlay.dart';
 import 'package:scanai_app/core/utils/logger.dart';
 
 class CameraPreviewWidget extends StatefulWidget {
@@ -70,6 +71,19 @@ class _CameraPreviewWidgetState extends State<CameraPreviewWidget> {
                     },
                   ),
                 ),
+
+              // Connection overlay - tampilkan saat connecting atau error
+              Positioned.fill(
+                child: ConnectionOverlay(
+                  isConnecting: cameraState.cameraStatus == CameraStatus.connecting,
+                  hasError: cameraState.cameraStatus == CameraStatus.error,
+                  errorMessage: cameraState.error ?? '',
+                  onRetry: () {
+                    // Retry connection
+                    cameraState.startStreaming();
+                  },
+                ),
+              ),
             ],
           ),
         );

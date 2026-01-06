@@ -253,15 +253,10 @@ class _StreamingButton extends StatelessWidget {
       label: isStreaming ? 'Stop' : 'Mulai',
       onPressed: cameraState.isInitialized
           ? () async {
-              final messenger = ScaffoldMessenger.of(context);
-              try {
-                if (isStreaming) {
-                  await cameraState.stopStreaming();
-                } else {
-                  await cameraState.startStreaming();
-                }
-              } catch (e) {
-                messenger.showSnackBar(SnackBar(content: Text('Error: $e'), behavior: SnackBarBehavior.floating));
+              if (isStreaming) {
+                await cameraState.stopStreaming();
+              } else {
+                await cameraState.startStreaming();
               }
             }
           : null,

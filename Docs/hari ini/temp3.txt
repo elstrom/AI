@@ -1,0 +1,38 @@
+Laporan Pekerjaan & Perbaikan Sistem
+Tanggal: 30 Desember 2025
+
+Ringkasan:
+Hari ini fokus utama adalah menstabilkan koneksi WebSocket antara aplikasi ScanAI dan Go Server, membersihkan log error yang mengganggu, dan penyesuaian konfigurasi sistem.
+
+Rincian Pekerjaan:
+
+1. Perbaikan Masalah Koneksi Terputus (Timeout)
+   - Masalah:
+     Koneksi WebSocket terputus secara otomatis setiap 30 detik. Aplikasi ScanAI mengalami siklus "Connected" -> "Disconnected" terus menerus.
+   - Analisis:
+     Ditemukan bahwa konfigurasi `timeout_user_online` di `config.json` diset terlalu singkat (10 detik). Selain itu, logika server awalnya mungkin tidak mereset timer ini saat menerima frame video (hanya saat menerima Ping).
+   - Solusi:
+     a. Modifikasi `go_server/internal/websocket/server.go`: Menambahkan logika untuk mereset "Read Deadline" (waktu tunggu) setiap kali server menerima pesan APAPUN dari klien (baik itu Ping maupun Frame Video). Ini memastikan koneksi tetap hidup selama pengguna aktif mengirim video.
+     b. Update `config.json`: Mengubah nilai `timeout_user_online` dari 10 detik menjadi 300 detik (5 menit). Ini memberikan toleransi waktu yang jauh lebih panjang sebelum server memutus koneksi pasif.
+
+2. Pembersihan Log Terminal (Noise Reduction)
+   - Masalah:
+     Terminal dipenuhi dengan pesan error berulang: `websocket: discarding reader close error: io: read/write on closed pipe` saat koneksi terputus. Ini sebenarnya bukan error fatal, informatif bahwa pipa koneksi ditutup.
+   - Solusi:
+     Modifikasi script runner `start_system.py`. Menambahkan filter di fungsi `log_pipe` untuk secara otomatis menyembunyikan/mengabaikan baris log yang mengandung pesan tersebut. Terminal sekarang jauh lebih bersih dan hanya menampilkan log penting.
+
+3. Penyesuaian Aplikasi Seluler (Flutter)
+   - ScanAI (`app_constants.dart`):
+     Mengubah `isDebugMode` menjadi `false` untuk menonaktifkan log debug yang berlebihan di sisi aplikasi.
+   - CameraService (`camera_service.dart`):
+     Peningkatan logika inisialisasi kamera (Native Bridge). Menambahkan mekanisme retry yang lebih robust (mencoba Service Channel dan Control Channel) untuk mendapatkan `TextureID`, memastikan kamera berhasil dimuat meskipun proses native butuh waktu untuk start.
+
+4. Status Terakhir
+   - Sistem berjalan stabil via `start_system.py`.
+   - Koneksi WebSocket tidak lagi putus setiap 30 detik.
+   - Log terminal bersih dari spam error socket.
+   - Aplikasi ScanAI sudah dikonfigurasi untuk mode produksi (debug off).
+
+Rekomendasi Selanjutnya:
+- Jika ingin memonitor performa real-time, gunakan endpoint `/metrics` atau `/renderer-stats` yang sudah tersedia di Go Server.
+- Pastikan setting `timeout_user_online` tetap di angka yang wajar (5-10 menit) untuk menjaga efisiensi memori server.

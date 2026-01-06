@@ -1,0 +1,66 @@
+# Dokumentasi Update Sinkronisasi iOS & Android ScanAI
+Tanggal: 30 Desember 2025
+
+## 1. Overview
+Update ini bertujuan untuk menyetarakan fitur monitoring, logging, dan manajemen lifecycle di platform iOS agar identik dengan implementasi Android yang sudah ada. Sebelumnya, fitur monitoring detail (System Monitor) dan pre-flight cleaning hanya tersedia di Android. 
+
+## 2. Fitur Baru di iOS (Native Swift)
+
+Implementasi dilakukan di `AppDelegate.swift` dengan menambahkan class dan logic baru tanpa merusak struktur yang ada.
+
+### A. System Monitor (`SystemMonitor` Class)
+Fitur monitoring CPU dan resource system kini tersedia di iOS. Meskipun iOS membatasi akses ke `/proc/stat` (seperti di Android), kita menggunakan **Mach Kernel APIs** (low-level Darwin kernel) yang legal dan valid.
+
+*   **CPU Usage:** 
+    *   Teknik: Menggunakan `host_statistics` dengan `HOST_CPU_LOAD_INFO`.
+    *   Cara Kerja: Mengambil snapshot `cpu_ticks` (User, System, Idle, Nice) dari kernel, lalu menghitung persentase pemakaian berdasarkan delta waktu antara dua snapshot.
+*   **Thread Count:** 
+    *   Teknik: Menggunakan `task_threads`.
+    *   Cara Kerja: Menghitung jumlah thread aktif yang dimiliki oleh process aplikasi saat ini.
+*   **Memory Info:** 
+    *   Teknik: Menggunakan `mach_task_basic_info`.
+    *   Cara Kerja: Mendapatkan `resident_size` (RAM yang dipakai app) dan membandingkannya dengan `ProcessInfo.physicalMemory` (Total RAM Fisik Device).
+*   **Storage Info:** 
+    *   Teknik: Standard `FileManager`.
+    *   Cara Kerja: Mengecek `attributesOfFileSystem` untuk free space dan total space.
+*   **Thermal State:** 
+    *   Teknik: `ProcessInfo.processInfo.thermalState`.
+    *   Output: Nominal, Fair, Serious, Critical.
+
+### B. Method Channels Baru
+Telah ditambahkan Method Channel yang sebelumnya hanya ada di Android untuk paritas fitur:
+1.  **`com.scanai/system_monitor`**: 
+    *   Interface komunikasi data monitoring (CPU, Memory, Thread, Thermal) dari Native ke Flutter.
+2.  **`com.scanai.bridge/logging`**: 
+    *   Memungkinkan native code (Swift) mengirim log langsung ke Dart debugger agar logging terpusat satu pintu.
+3.  **`com.scanai.app/lifecycle`**: 
+    *   Menambahkan endpoint `cleanup` untuk pembersihan resource manual dari sisi Flutter jika diperlukan.
+
+### C. Lifecycle & Pre-flight Cleaning (Penyetaraan Logic)
+Logic pembersihan yang kuat diterapkan untuk mencegah crash saat restart atau stuck state, menyamai logic `MainActivity.onCreate` di Android:
+*   **Pre-flight Cleaning:** Saat `didFinishLaunchingWithOptions` (App Start), aplikasi sekarang:
+    1. Membersihkan semua notifikasi local yang tertunda/masih muncul.
+    2. Memastikan instance service kamera lama dimatikan (dispose) sebelum membuat yang baru.
+*   **Termination Cleanup:** Saat `applicationWillTerminate`, logic pembersihan dijalankan untuk mematikan kamera dan membersihkan notifikasi, mencegah "zombie state".
+
+## 3. Update Dart/Flutter
+
+### A. Monitoring Service (`cpu_monitor_service.dart`)
+*   **Platform Check Enabled:** Flag `Platform.isIOS` ditambahkan agar service ini tidak lagi eksklusif Android.
+*   **Thermal Status Parsing:** Logic ditambahkan untuk membedakan return value thermal status antar platform:
+    *   iOS: 0-3 (Nominal - Critical)
+    *   Android: 0-6 (None - Shutdown)
+
+### B. UI & State
+*   **Streaming Monitor Widget:** Section "Debugging Metrics" (CPU, RAM, Threads) sekarang ditampilkan juga di iOS.
+*   **Camera State:** Inisialisasi `SystemMonitorService` kini berjalan otomatis saat Debug Mode aktif di kedua platform.
+
+## 4. File yang Diubah
+1.  **Native iOS:** `ios/Runner/AppDelegate.swift`
+2.  **Service Dart:** `lib/services/monitoring/cpu_monitor_service.dart`
+3.  **UI Widget:** `lib/presentation/widgets/streaming_monitor.dart`
+4.  **State Management:** `lib/presentation/state/camera_state.dart`
+
+---
+**Catatan Teknis Tambahan:**
+Implementasi CPU Monitor di iOS ini menggunakan pointer (`unsafeMutablePointer`) untuk mengakses struct C `host_cpu_load_info` di level kernel. Ini adalah cara standar dan performant untuk mendapatkan info sistem di environment Apple Darwin tanpa melanggar sandbox (selama hanya membaca host info umum atau task info milik sendiri).

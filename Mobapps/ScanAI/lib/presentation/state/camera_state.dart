@@ -551,7 +551,8 @@ class CameraState extends ChangeNotifier with WidgetsBindingObserver {
       notifyListeners();
       AppLogger.e('❌ Cannot connect: StreamingService is null',
           category: 'camera');
-      throw Exception(_error);
+      // Don't throw - just set error state
+      return;
     }
 
     try {
@@ -591,7 +592,7 @@ class CameraState extends ChangeNotifier with WidgetsBindingObserver {
       AppLogger.e('❌ Server connection failed', category: 'camera', error: e);
       await NotificationHelper.updateStatus('ScanAI', _connectionStatus);
       notifyListeners();
-      rethrow;
+      // Don't rethrow - error will be shown via ConnectionOverlay
     }
   }
 
@@ -697,7 +698,8 @@ class CameraState extends ChangeNotifier with WidgetsBindingObserver {
       _error = 'Required services not initialized';
       notifyListeners();
       AppLogger.e('❌ STARTUP FAILED: Services not ready', category: 'camera');
-      throw Exception(_error);
+      // Don't throw - just set error state
+      return;
     }
 
     try {
@@ -730,8 +732,7 @@ class CameraState extends ChangeNotifier with WidgetsBindingObserver {
       // CRITICAL: Reset state properly to allow retry
       _isStreaming = false;
       _isDetecting = false;
-      _cameraStatus =
-          CameraStatus.ready; // Set to ready, not error, to allow retry
+      _cameraStatus = CameraStatus.error; // Set to error to show overlay
       
       // Determine appropriate error message based on exception
       final errorStr = e.toString().toLowerCase();
@@ -753,7 +754,7 @@ class CameraState extends ChangeNotifier with WidgetsBindingObserver {
       await NotificationHelper.updateStatus('ScanAI', _error ?? AppConstants.statusServerDown);
 
       notifyListeners();
-      rethrow;
+      // Don't rethrow - error will be shown via ConnectionOverlay
     }
   }
 

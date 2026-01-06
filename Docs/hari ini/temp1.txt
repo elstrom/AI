@@ -1,0 +1,92 @@
+LAPORAN PERBAIKAN BUG FORCE CLOSE (RESTART APP)
+==================================================
+Tanggal: 30 Desember 2025
+Aplikasi: ScanAI (Android/Flutter)
+Isu: Force Close saat aplikasi dibuka kembali setelah di-swipe up (killed) dari Recent Apps.
+
+1. ANALISIS MASALAH (ROOT CAUSE)
+--------------------------------------------------
+Masalah utama adalah "Race Condition" dan "Sabotase Resource" antara instance aplikasi baru dengan sisa-sisa service dari sesi sebelumnya.
+
+Penyebab Teknis:
+1.  **Zombie Service**: Saat aplikasi dimatikan paksa (swipe up), Android tidak selalu mematikan Foreground Service (`BridgeService`) dengan instan.
+2.  **Asynchronous Cleaning**: Ketika aplikasi dibuka lagi, `MainActivity` baru memerintahkan `stopService()` untuk membersihkan service lama. Perintah ini berjalan secara *asynchronous* (tidak ditunggu).
+3.  **Resource Sabotage (Inti Masalah)**: 
+    - `MainActivity` baru langsung membuat Texture Kamera baru dan menyimpannya di variabel global `BridgeService.textureEntry`.
+    - Beberapa milidetik kemudian, Service lama yang baru sempat merespon perintah mati (`onDestroy`) menjalankan kode pembersihan: `textureEntry.release()` dan `textureEntry = null`.
+    - Akibatnya, Texture baru milik `MainActivity` baru **DIHAPUS** oleh Service lama.
+4.  **Crash**: Saat aplikasi baru mencoba menggunakan texture tersebut, nilainya sudah null atau released -> Force Close.
+
+2. RENCANA & LOGIKA PERBAIKAN
+--------------------------------------------------
+Untuk memperbaiki ini, kita harus mengubah kepemilikan resource dan urutan eksekusi.
+
+Logika Baru:
+-   **Kepemilikan Resource**: `BridgeService` (Service) dilarang keras menghancurkan resource Global (`textureEntry`) saat dia mati. Biarkan `MainActivity` (UI/User) yang berkuasa penuh mengatur hidup matinya resource tersebut.
+-   **Urutan Eksekusi (Start -> Clean -> Gap -> Proceed)**: Memberikan jeda waktu eksplisit agar sistem operasi selesai melakukan pembersihan sebelum aplikasi baru mulai mengalokasikan memori/resource berat.
+
+3. PERUBAHAN KODE (BEFORE VS AFTER)
+--------------------------------------------------
+
+A. File: `BridgeService.kt` (Mencegah Sabotase)
+--------------------------------------------------
+Tujuannya: Menonaktifkan kode yang menghapus texture saat service mati.
+
+SEBELUM (Destruktif):
+```kotlin
+override fun onDestroy() {
+    // ...
+    textureEntry?.release()  // Masalah: Menghapus texture global
+    textureEntry = null      // Masalah: Mengubah variable global jadi null
+    flutterTextureId = -1
+    // ...
+}
+```
+
+SESUDAH (Aman):
+```kotlin
+override fun onDestroy() {
+    // ...
+    // textureEntry?.release() // DISABLED: Jangan dihapus oleh Service
+    // textureEntry = null     // DISABLED: Biarkan MainActivity yang atur
+    // flutterTextureId = -1
+    // ...
+}
+```
+*Catatan: Hal yang sama juga diterapkan di `onTaskRemoved`.*
+
+B. File: `MainActivity.kt` (Mengatur Timing)
+--------------------------------------------------
+Tujuannya: Memberi jeda waktu (Gap) agar pembersihan tuntas sebelum inisialisasi.
+
+SEBELUM (Terburu-buru):
+```kotlin
+try {
+    stopService(serviceIntent) // Kirim perintah mati
+    // Langsung lanjut ke kode inisialisasi di bawah...
+} catch (e: Exception) { ... }
+super.onCreate(savedInstanceState) // Inisialisasi engine dimulai INSTAN
+```
+
+SESUDAH (Terstruktur: Clean -> Gap -> Proceed):
+```kotlin
+try {
+    stopService(serviceIntent) // 1. Clean
+} catch (e: Exception) { ... }
+
+Log.i(TAG, "Waiting for gap...")
+try {
+    Thread.sleep(300)          // 2. GAP (Jeda 300ms)
+} catch (e: InterruptedException) { ... }
+
+super.onCreate(savedInstanceState) // 3. Proceed (Inisialisasi aman)
+```
+
+4. ALUR EKSEKUSI FINAL (FLOWCHART)
+--------------------------------------------------
+1.  **User Buka App** -> `MainActivity.onCreate()` dipanggil.
+2.  **Cleaning Phase**: `stopService()` dipanggil untuk mematikan sisa service lama.
+3.  **Safety Gap**: Aplikasi "tahan napas" (sleep) selama 300ms.
+    -   *Di balik layar*: Android System punya waktu untuk memproses `onDestroy` service lama. Service lama mati *tanpa* merusak texture global (karena kode destruktifnya sudah kita disable).
+4.  **Init Phase**: `super.onCreate()` jalan -> Texture Kamera Baru dibuat.
+5.  **Result**: Texture aman, Service baru start dengan mulus, UI tampil normal.

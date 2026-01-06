@@ -1,0 +1,306 @@
+===============================================
+LAPORAN HARIAN
+===============================================
+Tanggal: 30 Desember 2025
+===============================================
+1. AKTIVITAS PENGEMBANGAN UTAMA
+===============================================
+
+1.1. Perbaikan Bug Force Close (Restart App):
+- Analisis dan perbaikan masalah race condition antara instance aplikasi baru dengan sisa-sisa service dari sesi sebelumnya
+- Implementasi solusi untuk mencegah "Zombie Service" yang menyebabkan crash saat aplikasi dibuka kembali
+- Modifikasi kepemilikan resource dan urutan eksekusi untuk mencegah resource sabotage
+- Penambahan "Safety Gap" selama 300ms untuk memberikan waktu bagi OS melakukan pembersihan sebelum inisialisasi
+- Perubahan mode service dari START_STICKY menjadi START_NOT_STICKY untuk mencegah service hantu
+
+1.2. Optimasi AI Server (Backend):
+- Implementasi GPU Acceleration dengan Hybrid Failover (DirectML -> CUDA -> CPU)
+- Integrasi Ngrok Tunnel untuk aksesibilitas publik
+- Penambahan blok try-catch untuk menangani kegagalan inisialisasi GPU secara otomatis
+- Konfigurasi port dan region Ngrok diambil dari config.json
+
+1.3. Pengembangan Sistem Monitoring (Android Native):
+- Pembuatan System Monitor Channel untuk komunikasi antara Native dan Flutter
+- Perbaikan validasi data CPU yang selalu bernilai 0.0% pada Android versi modern
+- Implementasi monitoring memori dan thermal status
+- Implementasi Logika Prioritas Ganda untuk CPU monitoring (Global CPU -> Process CPU)
+- Konversi kode integer Android menjadi label intuitif untuk thermal status
+
+1.4. Sinkronisasi iOS & Android:
+- Implementasi fitur monitoring di iOS menggunakan Mach Kernel APIs
+- Penyetaraan Method Channels antara iOS dan Android
+- Implementasi lifecycle dan pre-flight cleaning di iOS
+- Penggunaan host_statistics dengan HOST_CPU_LOAD_INFO untuk CPU monitoring di iOS
+- Implementasi task_threads untuk thread count dan mach_task_basic_info untuk memory info
+
+1.5. Stabilitas Koneksi & Logging:
+- Perbaikan masalah koneksi WebSocket yang terputus setiap 30 detik
+- Pembersihan log terminal dari noise error yang mengganggu
+- Implementasi sistem logging terpusat dengan single source of truth
+- Penonaktifan debug mode untuk produksi
+
+===============================================
+2. STATUS KONEKSI SERVER HARI INI
+===============================================
+
+2.1. Perbaikan Masalah Koneksi Terputus (VERIFIED):
+- Koneksi WebSocket yang terputus setiap 30 detik telah diperbaiki
+- Modifikasi logika server untuk mereset "Read Deadline" setiap kali menerima pesan
+- Update konfigurasi timeout_user_online dari 10 detik menjadi 300 detik
+- Penambahan logika untuk mereset timer saat menerima frame video atau ping
+
+2.2. Pembersihan Log Terminal:
+- Filter otomatis untuk menyembunyikan pesan error berulang
+- Terminal sekarang lebih bersih dan hanya menampilkan log penting
+- Pengurangan noise log yang mengganggu dengan filter "websocket: discarding reader close error"
+
+2.3. Sistem Logging Terpusat:
+- Native Log (Log.i) tidak lagi bocor di console meskipun debug mode off
+- Semua logging dipusatkan ke Dart agar tunduk pada satu konfigurasi
+- Implementasi NativeLogService untuk mendengarkan pesan dari Native
+- Penambahan class NativeLogService di lib/core/utils/logger.dart
+
+===============================================
+3. IMPLEMENTASI KODE BARU
+===============================================
+
+3.1. Modul Android Native:
+- File `android/.../BridgeService.kt`: 
+  - Menonaktifkan pembersihan texture manual di onDestroy dan onTaskRemoved
+  - Mengubah START_STICKY menjadi START_NOT_STICKY
+  - Mencegah resource sabotage oleh service lama
+- File `android/.../MainActivity.kt`: 
+  - Implementasi pre-flight cleaning dengan jeda 300ms
+  - Penambahan logika di onCreate untuk mematikan paksa BridgeService lama
+  - Menghapus cache FlutterEngine dan notifikasi yang nyangkut
+- File `CpuMonitor.kt`: 
+  - Implementasi logika prioritas ganda untuk CPU monitoring
+  - Prioritas 1: Mencoba baca Global CPU (/proc/stat)
+  - Prioritas 2 (Fallback): Membaca Process CPU (/proc/self/stat)
+
+3.2. Modul iOS Native:
+- File `ios/Runner/AppDelegate.swift`: 
+  - Implementasi System Monitor class dengan Mach Kernel APIs
+  - Penambahan Method Channels untuk paritas fitur dengan Android
+  - Implementasi lifecycle dan pre-flight cleaning logic
+  - Penggunaan unsafeMutablePointer untuk akses struct C host_cpu_load_info
+- Pre-flight Cleaning di didFinishLaunchingWithOptions:
+  - Membersihkan semua notifikasi local yang tertunda
+  - Memastikan instance service kamera lama dimatikan
+- Termination Cleanup di applicationWillTerminate:
+  - Logic pembersihan untuk mematikan kamera dan membersihkan notifikasi
+
+3.3. Modul Server Backend:
+- File `ai_system/model_inference.py`: 
+  - Implementasi GPU acceleration dengan hybrid failover
+  - Prioritas Eksekusi: DirectML (GPU) -> CUDA (NVIDIA) -> CPU (Fallback)
+  - Penambahan blok try-catch untuk kegagalan inisialisasi GPU
+- File `start_system.py`: 
+  - Integrasi Ngrok Tunnel untuk aksesibilitas publik
+  - Filter log_pipe untuk menyembunyikan pesan error berulang
+- File `go_server/internal/websocket/server.go`: 
+  - Perbaikan logika timeout untuk koneksi WebSocket
+  - Reset "Read Deadline" setiap kali menerima pesan apapun dari klien
+
+3.4. Modul Flutter Services:
+- File `lib/services/camera_service.dart`: 
+  - Implementasi robust retry mechanism untuk Texture ID
+  - Mengubah dari Single Attempt menjadi Polling Loop
+  - Mencoba mengambil ID hingga 10 kali (max 5 detik) dengan jeda 500ms
+- File `lib/services/monitoring/cpu_monitor_service.dart`: 
+  - Platform check untuk iOS dan Android
+  - Thermal Status Parsing untuk beda return value antar platform
+  - Timer.periodic untuk mengambil data dari Native setiap 1 detik
+- File `lib/core/utils/logger.dart`: 
+  - Sistem logging terpusat dengan single source of truth
+  - Penambahan class NativeLogService untuk mendengarkan pesan dari Native
+  - Pengecekan ketat if (!AppConstants.isDebugMode) return;
+
+3.5. Modul UI Flutter:
+- File `lib/presentation/widgets/streaming_monitor.dart`: 
+  - Simplifikasi UI dengan menghapus indikator warna dinamis
+  - Layout dengan SingleChildScrollView dan Container constraints
+  - Section "Debugging Metrics" untuk CPU, RAM, Threads di iOS dan Android
+- File `lib/presentation/state/camera_state.dart`: 
+  - Lazy loading untuk service monitoring
+  - Menghubungkan stream dari service ke variabel state
+  - Inisialisasi SystemMonitorService otomatis saat Debug Mode aktif
+- File `lib/core/constants/app_constants.dart`: 
+  - Menambahkan parameter konfigurasi UI Monitoring
+  - monitoringMaxHeightMultiplier = 0.5 (Batas tinggi widget 50% layar)
+  - monitoringFixedWidth = 300.0 (Lebar widget tetap)
+
+===============================================
+4. ANALISIS LOG APLIKASI
+===============================================
+
+4.1. Startup Logs:
+- Aplikasi berhasil dimulai tanpa force close setelah implementasi pre-flight cleaning
+- GPU acceleration berhasil diinisialisasi dengan fallback yang tepat
+- Sistem monitoring berfungsi di kedua platform (Android dan iOS)
+- Ngrok Tunnel berhasil dibuat dan URL ditampilkan di console
+
+4.2. Runtime Logs:
+- Koneksi WebSocket stabil tanpa putus otomatis setiap 30 detik
+- Data monitoring CPU, RAM, dan thermal status tersedia secara real-time
+- Log terminal bersih dari spam error socket
+- CPU Usage akurat merefleksikan beban kerja aplikasi
+- Thermal status menampilkan label intuitif (Normal, Light, Severe)
+
+4.3. Error Logs:
+- Pesan "websocket: discarding reader close error" berhasil difilter
+- Tidak ada lagi force close saat aplikasi dibuka kembali
+- Tidak ada lagi "Failed to get valid texture ID" setelah implementasi retry logic
+
+===============================================
+5. PERUBAHAN KESELURUHAN PROYEK
+===============================================
+
+5.1. Infrastruktur Backend:
+- Penambahan GPU acceleration untuk performa inferensi AI yang lebih baik
+- Integrasi Ngrok Tunnel untuk aksesibilitas publik
+- Perbaikan stabilitas koneksi WebSocket dengan timeout yang lebih panjang
+- Implementasi hybrid failover untuk GPU acceleration
+
+5.2. Aplikasi Mobile (Flutter & Native):
+- Penyelesaian masalah force close saat restart aplikasi dengan pre-flight cleaning
+- Paritas fitur monitoring antara platform Android dan iOS
+- Sistem logging terpusat yang patuh pada konfigurasi tunggal
+- Implementasi Mach Kernel APIs untuk monitoring di iOS
+- Perubahan mode service dari START_STICKY menjadi START_NOT_STICKY
+
+5.3. UI/UX Improvements:
+- Simplifikasi monitoring UI dengan menghapus indikator warna dinamis
+- Layout scrollable untuk monitoring widget
+- Section debugging metrics yang informatif
+- Konfigurasi UI yang terpusat di app_constants.dart
+
+===============================================
+6. IDENTIFIKASI MASALAH
+===============================================
+
+6.1. Masalah Terselesaikan:
+- Force close saat aplikasi dibuka kembali setelah dimatikan paksa
+- Koneksi WebSocket terputus setiap 30 detik
+- CPU Usage selalu bernilai 0.0% pada Android versi modern
+- Log terminal yang berisik dengan pesan error berulang
+- Ketimpangan fitur monitoring antara Android dan iOS
+- Native Log yang bocor di console meskipun debug mode off
+- Race condition antara instance aplikasi baru dengan service lama
+- Resource sabotage oleh service lama yang menghapus texture baru
+- "Failed to get valid texture ID" karena keterlambatan Native Service
+
+6.2. Masalah Potensial:
+- Perlu monitoring performa database setelah integrasi GPU acceleration
+- Perlu pengujian lebih lanjut untuk kompatibilitas dengan berbagai device
+- Perlu dokumentasi API yang lebih komprehensif untuk monitoring endpoints
+- Perlu pengujian stabilitas Ngrok Tunnel untuk aksesibilitas publik jangka panjang
+
+===============================================
+7. IMPLEMENTASI SISTEM MONITORING
+===============================================
+
+7.1. Identifikasi Masalah:
+- Tidak adanya monitoring real-time untuk performa aplikasi
+- CPU Usage tidak akurat pada Android versi modern karena pembatasan akses /proc/stat
+- Tidak ada paritas fitur monitoring antar platform (iOS vs Android)
+- Native Log yang tidak terkendali meskipun debug mode off
+
+7.2. Solusi yang Diimplementasi:
+- Implementasi System Monitor Channel untuk Android dan iOS
+- Penggunaan Mach Kernel APIs untuk monitoring di iOS
+- Centralized logging system dengan single source of truth
+- Logika Prioritas Ganda untuk CPU monitoring di Android
+- Platform-specific thermal status parsing
+
+7.3. Kode Terkait:
+- File `android/.../CpuMonitor.kt`: 
+  - Implementasi logika prioritas ganda
+  - Prioritas 1: Global CPU (/proc/stat)
+  - Prioritas 2: Process CPU (/proc/self/stat)
+- File `ios/Runner/AppDelegate.swift`: 
+  - Implementasi System Monitor class
+  - Penggunaan host_statistics dengan HOST_CPU_LOAD_INFO
+  - Penggunaan task_threads dan mach_task_basic_info
+- File `lib/services/monitoring/cpu_monitor_service.dart`: 
+  - Platform check untuk iOS dan Android
+  - Thermal Status Parsing untuk beda return value
+  - StreamController.broadcast untuk multiple listeners
+- File `lib/core/utils/logger.dart`: 
+  - NativeLogService untuk mendengarkan pesan dari Native
+  - AppLogger dengan pengecekan ketat debug mode
+
+===============================================
+8. REKOMENDASI PERBAIKAN SELANJUTNYA
+===============================================
+
+8.1. Prioritas TINGGI:
+- Monitoring performa database setelah integrasi GPU acceleration
+- Pengujian kompatibilitas dengan berbagai device Android dan iOS
+- Penambahan unit test untuk sistem monitoring
+- Pengujian stabilitas Ngrok Tunnel untuk produksi
+
+8.2. Prioritas SEDANG:
+- Dokumentasi API yang lebih komprehensif untuk monitoring endpoints
+- Implementasi alert system untuk threshold monitoring
+- Penambahan fitur export data monitoring untuk analisis
+- Optimasi penggunaan memory untuk monitoring service
+
+8.3. Prioritas RENDAH:
+- Implementasi machine learning untuk prediksi performa
+- Penambahan visualisasi data monitoring yang lebih interaktif
+- Integrasi dengan external monitoring services
+- Implementasi historical data storage untuk trending analysis
+
+===============================================
+9. STATISTIK PROYEK
+===============================================
+
+9.1. Kode:
+- Penambahan ~500 baris kode untuk sistem monitoring
+- Refactoring ~300 baris kode untuk stabilitas lifecycle
+- Penambahan 2 file baru untuk iOS monitoring (AppDelegate.swift modifications)
+- Modifikasi ~200 baris kode untuk perbaikan WebSocket
+- Penambahan ~150 baris kode untuk GPU acceleration
+- Penambahan ~100 baris kode untuk Ngrok integration
+
+9.2. Kualitas:
+- Stabilitas aplikasi meningkat dengan adanya pre-flight cleaning
+- Performa inferensi AI lebih baik dengan GPU acceleration
+- User Experience ditingkatkan dengan monitoring real-time
+- Konsistensi antar platform dengan paritas fitur
+- Log terminal yang bersih dari noise error
+- Sistem logging yang terpusat dan terkontrol
+
+9.3. Performa:
+- Waktu startup aplikasi lebih stabil dengan safety gap 300ms
+- Koneksi WebSocket stabil tanpa putus otomatis
+- CPU Usage monitoring yang akurat di Android versi modern
+- GPU acceleration dengan hybrid failover untuk performa AI
+
+===============================================
+10. PENCAPAIAN HARI INI
+===============================================
+
+Selesai:
+- Perbaikan bug force close saat restart aplikasi dengan pre-flight cleaning
+- Implementasi GPU acceleration dengan hybrid failover (DirectML -> CUDA -> CPU)
+- Pengembangan sistem monitoring untuk Android dan iOS dengan Mach Kernel APIs
+- Perbaikan stabilitas koneksi WebSocket dengan timeout adjustment
+- Pembersihan log terminal dari noise dengan filter system
+- Sinkronisasi fitur antara iOS dan Android untuk paritas lengkap
+- Implementasi sistem logging terpusat dengan single source of truth
+- Integrasi Ngrok Tunnel untuk aksesibilitas publik
+- Perubahan mode service dari START_STICKY menjadi START_NOT_STICKY
+- Implementasi robust retry mechanism untuk Texture ID acquisition
+
+===============================================
+11. Rencana Besok — 31 Desember 2025
+===============================================
+- [ ] Monitoring performa database setelah integrasi GPU acceleration
+- [ ] Pengujian kompatibilitas dengan berbagai device Android dan iOS
+- [ ] Penambahan unit test untuk sistem monitoring
+- [ ] Dokumentasi API monitoring endpoints
+- [ ] Implementasi alert system untuk threshold monitoring
+- [ ] Pengujian stabilitas Ngrok Tunnel untuk produksi
+- [ ] Optimasi penggunaan memory untuk monitoring service

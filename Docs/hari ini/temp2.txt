@@ -1,0 +1,92 @@
+LAPORAN TEKNIS IMPLEMENTASI SISTEM MONITORING & OPTIMASI SERVER
+===========================================================
+Tanggal: 30 Desember 2025
+Project: ServerAI & ScanAI
+
+Berikut adalah dokumentasi detail mengenai seluruh perubahan yang telah dilakukan dari awal hingga akhir terkait pengembangan fitur monitoring dan optimasi server.
+
+BAGIAN 1: OPTIMASI AI SERVER (BACKEND)
+--------------------------------------
+Tujuan: Meningkatkan performa inferensi AI dan aksesibilitas publik.
+
+1. Implementasi GPU Acceleration (Hybrid Failover)
+   - Lokasi: `ai_system/model_inference.py`
+   - Perubahan: 
+     - Mengubah logika inisialisasi ONNX Runtime.
+     - Prioritas Eksekusi: DirectML (GPU) -> CUDA (NVIDIA) -> CPU (Fallback).
+     - Menambahkan blok `try-catch` untuk menangani kegagalan inisialisasi GPU secara otomatis agar server tetap berjalan meskipun driver GPU bermasalah.
+
+2. Integrasi Ngrok Tunnel
+   - Lokasi: `start_system.py`
+   - Perubahan:
+     - Menambahkan logika untuk menjalankan binary `ngrok` secara otomatis saat server dimulai.
+     - Konfigurasi port dan region diambil dari `config.json`.
+     - Output URL Ngrok ditampilkan di console untuk kemudahan koneksi dari aplikasi mobile.
+
+BAGIAN 2: PENGEMBANGAN SISTEM MONITORING (ANDROID NATIVE)
+---------------------------------------------------------
+Tujuan: Mengambil data performa perangkat (CPU, RAM, Suhu) secara real-time yang tidak tersedia di API standar Flutter.
+
+1. Pembuatan System Monitor Channel
+   - Lokasi: `MainActivity.kt`
+   - Metode: `setupSystemMonitorChannel()`
+   - Fitur: Membuka jalur komunikasi MethodChannel `com.scanai/system_monitor` untuk melayani request dari Flutter.
+
+2. Modul CPU Monitor & Perbaikan Validasi Data
+   - Lokasi: `CpuMonitor.kt`
+   - Masalah Awal: CPU Usage selalu bernilai `0.0%` pada Android versi modern (Android 8+).
+   - Penyebab: Akses ke `/proc/stat` dibatasi oleh Google demi alasan keamanan/privasi.
+   - Solusi (Fix):
+     - Implementasi Logika Prioritas Ganda.
+     - Prioritas 1: Mencoba baca Global CPU (`/proc/stat`).
+     - Prioritas 2 (Fallback): Jika diblokir, otomatis beralih membaca Process CPU (`/proc/self/stat`).
+     - Hasil: Angka CPU Usage kini akurat merefleksikan beban kerja aplikasi.
+
+3. Monitoring Memori & Thermal
+   - Thermal Status: Mengonversi kode integer Android menjadi label intuitif:
+     - 0 -> "Normal (Ideal)"
+     - 1 -> "Light (Warm)"
+     - 3 -> "Severe (Hot)"
+   - Memory Info: Mengambil `totalMem` dan `availableMem` dari `ActivityManager` untuk mengetahui sisa RAM fisik perangkat.
+
+BAGIAN 3: INTEGRASI CLIENT SIDE (FLUTTER APP)
+---------------------------------------------
+Tujuan: Menampilkan data monitoring di antarmuka pengguna dengan performa ringan.
+
+1. Centralized Configuration
+   - Lokasi: `lib/core/constants/app_constants.dart`
+   - Perubahan:
+     - Menambahkan parameter konfigurasi UI Monitoring.
+     - `monitoringMaxHeightMultiplier = 0.5` (Batas tinggi widget 50% layar).
+     - `monitoringFixedWidth = 300.0` (Lebar widget tetap).
+
+2. Service Layer (SystemMonitorService)
+   - Lokasi: `lib/services/monitoring/cpu_monitor_service.dart` (Renamed from CpuMonitorService)
+   - Fitur:
+     - Menggunakan `Timer.periodic` untuk mengambil data dari Native setiap 1 detik.
+     - Mengekspos data via `StreamController.broadcast` agar bisa didengarkan banyak widget sekaligus tanpa membebani bridge.
+
+3. State Management (CameraState)
+   - Lokasi: `lib/presentation/state/camera_state.dart`
+   - Fitur:
+     - Lazy Loading untuk service monitoring (hanya aktif saat dibutuhkan/debug mode).
+     - Menghubungkan stream dari service ke variabel state agar UI bisa rebuild otomatis.
+
+4. UI Widget Overlay (StreamingMonitor)
+   - Lokasi: `lib/presentation/widgets/streaming_monitor.dart`
+   - Perubahan Signifikan:
+     - **Simplifikasi**: Menghapus semua logika indikator warna dinamis (merah/kuning/hijau) sesuai permintaan user untuk tampilan yang lebih bersih.
+     - **Layout**: Membungkus konten dalam `SingleChildScrollView` dan membatasi tinggi dengan `Container constraints` agar widget bisa digulir (scrollable).
+     - **Konten Debug**: Menambahkan section khusus (hanya muncul di Debug Mode) yang menampilkan:
+       - CPU Usage & Thread Count.
+       - System RAM (Available/Total).
+       - Thermal Status.
+       - Frame Rate & Latency (Realtime).
+
+KESIMPULAN HASIL
+----------------
+Sistem kini memiliki kemampuan "Full Stack Observability":
+1. Server AI beroperasi dengan akselerasi GPU dan dapat diakses publik.
+2. Aplikasi Mobile dapat memantau kesehatan perangkat (Suhu, RAM, CPU) secara real-time.
+3. Masalah kompatibilitas pembacaan CPU pada Android versi baru telah teratasi.
+4. Tampilan monitoring UI sudah disederhanakan dan dioptimalkan (scrollable) sesuai spesifikasi user.

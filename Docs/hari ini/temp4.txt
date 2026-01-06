@@ -1,0 +1,63 @@
+# Laporan Perbaikan & Optimasi ScanAI
+**Tanggal:** 30 Desember 2025
+**Fokus:** Stabilitas Lifecycle & Kepatuhan Logging
+
+## 1. Masalah Utama: Crash saat Restart (Force Close)
+**Gejala:**
+Aplikasi mengalami force close/crash ketika dibuka kembali setelah dimatikan paksa oleh OS (Swiped from Recents) atau crash sebelumnya.
+
+**Analisa Akar Masalah:**
+1.  **Zombie Service:** `BridgeService` menggunakan mode `START_STICKY`, menyebabkan Android menghidupkan kembali service tersebut di background tanpa UI (Headless/Zombie) setelah aplikasi mati.
+2.  **Resource Conflict:** Saat aplikasi dibuka kembali, inisialisasi baru bertabrakan dengan "Service Hantu" yang masih memegang resource kamera atau Texture ID lama.
+3.  **Race Condition:** Flutter Engine meminta Texture ID terlalu cepat sebelum Service Native selesai restart setelah dibersihkan.
+
+## 2. Solusi & Implementasi Teknis
+
+### A. Lifecycle Safety Net (Android Native)
+Kami menerapkan mekanisme "Pre-Flight Cleaning" yang agresif untuk memastikan *Clean Slate* setiap kali aplikasi dimulai.
+
+*   **File:** `android/.../MainActivity.kt`
+*   **Perubahan:**
+    *   Menambahkan logika di `onCreate` untuk mematikan paksa `BridgeService` lama.
+    *   Menghapus cache `FlutterEngine` dan notifikasi yang nyangkut.
+    *   **Gap Inisialisasi:** Menambahkan `Thread.sleep(300)` (300ms) untuk memberi jeda waktu bagi OS melepas resource hardware sebelum inisialisasi dimulai.
+
+### B. Mencegah Service Hantu (Android Native)
+*   **File:** `android/.../BridgeService.kt`
+*   **Perubahan:** Mengubah `START_STICKY` menjadi `START_NOT_STICKY`.
+*   **Efek:** Android dilarang menghidupkan service ini secara otomatis jika aplikasi mati. Service hanya boleh hidup jika ada UI (Flutter/MainActivity) yang mendampinginya.
+
+### C. Robust Retry Mechanism (Flutter)
+*   **File:** `lib/services/camera_service.dart`
+*   **Perubahan:** Mengubah logika pengambilan `Texture ID` dari *Single Attempt* menjadi *Polling Loop*.
+*   **Logika:** Mencoba mengambil ID hingga 10 kali (max 5 detik) dengan jeda 500ms. Ini menangani keterlambatan Native Service yang sedang restart setelah *Pre-Flight Cleaning*.
+
+### D. Texture Management Refactor
+*   **File:** `android/.../BridgeService.kt`
+*   **Perubahan:** Menonaktifkan pembersihan texture manual (`textureEntry.release()`) di dalam Service.
+*   **Alasan:** Membiarkan `MainActivity` dan `FlutterEngine` yang mengelola siklus hidup texture untuk mencegah *Native Crash* karena texture dilepas saat sedang digunakan ulang.
+
+## 3. Sistem Logging Terpusat (Strict Compliance)
+
+**Masalah:** Native Log (`Log.i`) bocor di console meskipun `AppConstants.isDebugMode = false`.
+
+**Solusi:**
+Memusatkan seluruh logging ke Dart agar tunduk pada satu konfigurasi (`AppConstants`).
+
+1.  **Native "Bisu":**
+    *   Semua pemanggilan `Log.i`, `Log.d`, `Log.e` di Kotlin diganti/di-wrap menjadi pengiriman pesan via `MethodChannel`.
+    *   Native tidak lagi mencetak log ke Logcat secara langsung.
+
+2.  **Dart Gatekeeper:**
+    *   **File:** `lib/core/utils/logger.dart`
+    *   Menambahkan class `NativeLogService` yang mendengarkan pesan dari Native.
+    *   Pesan diteruskan ke `AppLogger` yang memiliki pengecekan ketat `if (!AppConstants.isDebugMode) return;`.
+
+**Hasil:**
+Saat `AppConstants.isDebugMode` di-set `false`, seluruh aplikasi (Dart + Native) benar-benar senyap (silent) di console, sesuai aturan "Single Source of Truth".
+
+---
+**Status Terakhir:**
+✅ Bug Force Close teratasi.
+✅ Masalah "Failed to get valid texture ID" teratasi dengan Retry Logic.
+✅ Sistem Logging sudah 100% patuh pada Config Dart.

@@ -1,0 +1,135 @@
+===============================================
+LAPORAN HARIAN
+===============================================
+Tanggal: 12 Desember 2025
+===============================================
+1. AKTIVITAS PENGEMBANGAN UTAMA
+===============================================
+
+1.1. System Hardening & Stabilitas Produksi:
+- Implementasi "Production Hardening" termasuk manajemen `Wakelock` yang hemat baterai
+- Penambahan global error handling untuk menangkap error pada isolate dan native crash
+- Perlindungan terhadap infinite restart loops dan persistensi state kritikal (token)
+
+1.2. Otomasi Startup & Shutdown Sistem:
+- Perbaikan skrip `start_system.py` untuk menangani path Go server dengan benar (mengatasi WinError 2)
+- Peningkatan `stop_system.py` untuk terminasi proses yang bersih dan handal
+- Verifikasi alur data end-to-end: APK -> Go -> Python -> Go -> APK
+
+1.3. Perbaikan UI/UX dan Visualisasi:
+- Perbaikan `StreamingMonitor` yang sebelumnya menampilkan 0 FPS menjadi akurat
+- Koreksi aspect ratio preview kamera menjadi 9:16 agar tidak gepeng
+- Standardisasi gaya visual tombol pada antarmuka pengguna
+
+1.4. Pembersihan & Kompilasi Kode:
+- Penyelesaian error kompilasi pada `detection_repository.dart`
+- Penghapusan referensi konfigurasi yang tidak terpakai di `file_config_loader.dart`
+
+===============================================
+2. STATUS KONEKSI SERVER HARI INI
+===============================================
+
+2.1. Konfigurasi Jaringan (VERIFIED):
+- Verifikasi logika IP Go Server: Menggunakan variabel dinamis `lastAPKAddr` (tidak perlu hardcode IP 192.168.x.x)
+- Koneksi antara komponen Server (Go, Python) dan Client (Flutter APK) terkonfirmasi berjalan
+
+2.2. Stabilitas Startup:
+- Isu timeout pada startup Python AI System telah ditangani
+- Go Server berhasil dijalankan melalui skrip orkestrasi tanpa masalah path
+
+===============================================
+3. IMPLEMENTASI KODE BARU
+===============================================
+
+3.1. Skrip Orkestrasi (`start_system.py`, `stop_system.py`):
+- Logika deteksi path executables yang lebih robust
+- Mekanisme timeout dan retry yang lebih baik saat memulai subprocess
+
+3.2. Modul Stabilitas Flutter:
+- Integrasi `Wakelock` battery-aware (mencegah drain berlebih)
+- Telemetri untuk monitoring restart otomatis akibat policy violation
+
+3.3. Perbaikan Widget Monitoring (`streaming_monitor.dart`):
+- Koneksi data real-time dari `StreamingService` dan `PerformanceOptimizer` ke UI
+- Polling mekanisme untuk pembaruan metrik yang konsisten
+
+===============================================
+4. ANALISIS LOG APLIKASI
+===============================================
+
+4.1. Startup Logs:
+- Sebelumnya: "Failed to start Go Server: [WinError 2]" -> TERATASI dengan perbaikan path absolut/relatif
+- Saat ini: Semua layanan (Go Interface, Python AI) melaporkan status "Running" dengan PID yang valid
+
+4.2. Runtime Logs:
+- Error "Frame not found in buffer" berkurang signifikan setelah perbaikan logika buffering
+- FPS counter pada log sinkron dengan tampilan di UI
+
+===============================================
+5. PERUBAHAN KESELURUHAN PROYEK
+===============================================
+
+5.1. Infrastruktur Backend:
+- Skrip operasional sistem sekarang menjadi bagian integral dari workflow deployment
+- Dependensi path diperbaiki untuk mendukung lingkungan Windows dengan lebih baik
+
+5.2. Frontend (Flutter):
+- Fokus bergeser dari sekadar fungsional (bisa streaming) ke performa (tahan lama, hemat baterai, error handling)
+- UI dipoles untuk konsistensi visual dan ketepatan rasio aspek
+
+===============================================
+6. IDENTIFIKASI MASALAH
+===============================================
+
+6.1. Masalah Terselesaikan:
+- ✅ Go Server path error saat startup
+- ✅ FPS Monitor selalu 0
+- ✅ Tampilan kamera gepeng (Fixed ratio 9:16)
+- ✅ Compilation errors di repository layer
+
+6.2. Masalah Potensial:
+- Testing jangka panjang (duration > 2 jam) diperlukan untuk memvalidasi efektivitas "battery-aware" wakelock
+- Perlu memastikan telemetry restart tidak membanjiri log jika jaringan tidak stabil
+
+===============================================
+7. REKOMENDASI PERBAIKAN SELANJUTNYA
+===============================================
+
+7.1. Prioritas TINGGI:
+- Stress test fitur "Production Hardening" (simulasi memory crunch, network loss)
+- Verifikasi konsistensi UI pada berbagai ukuran layar device android yang berbeda
+
+7.2. Prioritas SEDANG:
+- Refactoring lebih lanjut pada `start_system.py` untuk mendukung OS lain (Linux/Mac) jika diperlukan di masa depan
+- Menambahkan visual indikator untuk status "Battery Optimization" di UI
+
+===============================================
+8. STATISTIK PROYEK
+===============================================
+
+8.1. Kode:
+- Perbaikan signifikan pada file Python scripting (~50 baris perubahan)
+- Refactoring UI dan Service di Flutter (~200+ baris perubahan termasuk cleanup)
+
+8.2. Kualitas:
+- Reliabilitas sistem meningkat drastis dengan skrip startup yang benar
+- User Experience lebih halus dengan FPS counter yang jalan dan rasio kamera yang tepat
+
+===============================================
+9. PENCAPAIAN HARI INI
+===============================================
+
+✅ Selesai:
+- Sistem Hardening (Anti-crash, Battery-aware)
+- Skrip Manajemen Server (Start/Stop) yang Robust
+- Fix FPS Display & Aspek Rasio Kamera
+- Verifikasi Alur Jaringan End-to-End
+- Cleanup Kode Konfigurasi & Repository
+
+===============================================
+10. Rencana Besok — 13 Desember 2025
+===============================================
+- [ ] Long-duration stability testing (burn-in test)
+- [ ] Finalisasi persiapan rilis beta (internal)
+- [ ] Dokumentasi cara penggunaan skrip `start_system.py` untuk tim lain
+- [ ] Monitoring performa memori setelah seharian penuh dengan fitur hardening aktif
