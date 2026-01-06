@@ -150,15 +150,18 @@ abstract class StreamingServiceBase extends ServiceBase {
           },
         );
       } else {
-        throw Exception(
-            'Connection failed: Not connected after attempting to connect');
+        // Don't throw - just log error and add to error stream
+        AppLogger.e('Connection failed: Not connected after attempting to connect', category: 'streaming');
+        _errorStreamController.add('Connection failed: Server tidak terhubung');
       }
     } catch (e, stackTrace) {
+      // Don't rethrow - just log and add to error stream
       _handleError(
         'connect to streaming server',
         e,
         stackTrace,
         context: {'url': url ?? 'default'},
+        rethrowError: false, // Don't rethrow error
       );
     }
   }
