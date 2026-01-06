@@ -1,0 +1,206 @@
+============================================================
+SCANAI DATABASE REPORT
+Generated: 2025-12-23 10:24:37
+Database: d:\Gawe\AI\ScanAI_server\Serv_ScaI\scanai.db
+============================================================
+
+
+TABLE: ai_models (Rows: 0)
+----------------------------------------
+SCHEMA:
+  - id (INTEGER) [PK]
+  - name (TEXT) NOT NULL
+  - version (TEXT)
+  - labels (TEXT) NOT NULL
+  - is_active (INTEGER)
+  - created_at (TIMESTAMP)
+
+LATEST DATA (Tail 10):
+  (Table is empty)
+
+============================================================
+
+TABLE: audit_logs (Rows: 0)
+----------------------------------------
+SCHEMA:
+  - id (INTEGER) [PK]
+  - user_id (INTEGER)
+  - entity (TEXT) NOT NULL
+  - action (TEXT) NOT NULL
+  - changed_fields (TEXT)
+  - created_at (TIMESTAMP)
+
+LATEST DATA (Tail 10):
+  (Table is empty)
+
+============================================================
+
+TABLE: cash_movements (Rows: 1)
+----------------------------------------
+SCHEMA:
+  - id (INTEGER) [PK]
+  - transaction_id (INTEGER) NOT NULL
+  - amount (REAL) NOT NULL
+  - payment_method (TEXT) NOT NULL
+  - created_at (TIMESTAMP)
+
+LATEST DATA (Tail 10):
+  id | transaction_id | amount | payment_method | created_at
+  1 | 1 | 6660.0 | CASH | 2025-12-22 04:22:06
+
+============================================================
+
+TABLE: categories (Rows: 1)
+----------------------------------------
+SCHEMA:
+  - id (INTEGER) [PK]
+  - name (TEXT) NOT NULL
+  - is_active (INTEGER)
+
+LATEST DATA (Tail 10):
+  id | name | is_active
+  1 | Umum | 1
+
+============================================================
+
+TABLE: products (Rows: 6)
+----------------------------------------
+SCHEMA:
+  - id (INTEGER) [PK]
+  - name (TEXT) NOT NULL
+  - sku (TEXT)
+  - category_id (INTEGER) NOT NULL
+  - price (REAL) NOT NULL
+  - is_active (INTEGER)
+  - created_at (TIMESTAMP)
+  - updated_at (TIMESTAMP)
+
+LATEST DATA (Tail 10):
+  id | name | sku | category_id | price | is_active | created_at | updated_at
+  1 | cucur | None | 1 | 2500.0 | 1 | 2025-12-21 16:26:50 | 2025-12-21 16:26:50
+  2 | kue ku | None | 1 | 3000.0 | 1 | 2025-12-21 16:26:50 | 2025-12-21 16:26:50
+  3 | kue lapis | None | 1 | 2500.0 | 1 | 2025-12-21 16:26:50 | 2025-12-21 16:26:50
+  4 | lemper | None | 1 | 3500.0 | 1 | 2025-12-21 16:26:50 | 2025-12-21 16:26:50
+  5 | putri ayu | None | 1 | 2000.0 | 1 | 2025-12-21 16:26:50 | 2025-12-21 16:26:50
+  6 | wajik | None | 1 | 2500.0 | 1 | 2025-12-21 16:26:50 | 2025-12-21 16:26:50
+
+============================================================
+
+TABLE: scans (Rows: 8376)
+----------------------------------------
+SCHEMA:
+  - id (INTEGER) [PK]
+  - user_id (INTEGER)
+  - device_id (TEXT)
+  - session_id (TEXT)
+  - frame_seq (INTEGER)
+  - detection_count (INTEGER)
+  - status (TEXT)
+  - created_at (TIMESTAMP)
+
+LATEST DATA (Tail 10):
+  id | user_id | device_id | session_id | frame_seq | detection_count | status | created_at
+  8367 | 2 | TP1A.220905.001 |  | 695 | 0 | success | 2025-12-22 10:29:46
+  8368 | 2 | TP1A.220905.001 |  | 696 | 0 | success | 2025-12-22 10:29:46
+  8369 | 2 | TP1A.220905.001 |  | 697 | 0 | success | 2025-12-22 10:29:46
+  8370 | 2 | TP1A.220905.001 |  | 698 | 0 | success | 2025-12-22 10:29:46
+  8371 | 2 | TP1A.220905.001 |  | 699 | 0 | success | 2025-12-22 10:29:46
+  8372 | 2 | TP1A.220905.001 |  | 700 | 0 | success | 2025-12-22 10:29:46
+  8373 | 2 | TP1A.220905.001 |  | 701 | 0 | success | 2025-12-22 10:29:46
+  8374 | 2 | TP1A.220905.001 |  | 702 | 0 | success | 2025-12-22 10:29:46
+  8375 | 2 | TP1A.220905.001 |  | 703 | 0 | success | 2025-12-22 10:29:46
+  8376 | 2 | TP1A.220905.001 |  | 704 | 0 | success | 2025-12-22 10:29:46
+
+============================================================
+
+TABLE: sqlite_sequence (Rows: 8)
+----------------------------------------
+SCHEMA:
+  - name ()
+  - seq ()
+
+LATEST DATA (Tail 10):
+  name | seq
+  categories | 1
+  users | 2
+  products | 6
+  scans | 8376
+  transactions | 1
+  transaction_items | 1
+  stock_sales | 1
+  cash_movements | 1
+
+============================================================
+
+TABLE: stock_sales (Rows: 1)
+----------------------------------------
+SCHEMA:
+  - id (INTEGER) [PK]
+  - product_id (INTEGER) NOT NULL
+  - transaction_id (INTEGER) NOT NULL
+  - qty (INTEGER) NOT NULL
+  - created_at (TIMESTAMP)
+
+LATEST DATA (Tail 10):
+  id | product_id | transaction_id | qty | created_at
+  1 | 5 | 1 | 3 | 2025-12-22 04:22:06
+
+============================================================
+
+TABLE: transaction_items (Rows: 1)
+----------------------------------------
+SCHEMA:
+  - id (INTEGER) [PK]
+  - transaction_id (INTEGER) NOT NULL
+  - product_id (INTEGER)
+  - item_name (TEXT) NOT NULL
+  - price (REAL) NOT NULL
+  - qty (INTEGER) NOT NULL
+  - sub_total (REAL) NOT NULL
+  - total (REAL) NOT NULL
+
+LATEST DATA (Tail 10):
+  id | transaction_id | product_id | item_name | price | qty | sub_total | total
+  1 | 1 | 5 | putri ayu | 2000.0 | 3 | 6000.0 | 6000.0
+
+============================================================
+
+TABLE: transactions (Rows: 1)
+----------------------------------------
+SCHEMA:
+  - id (INTEGER) [PK]
+  - code (TEXT) NOT NULL
+  - date (TIMESTAMP)
+  - status (TEXT)
+  - subtotal (REAL)
+  - discount_total (REAL)
+  - tax_total (REAL)
+  - total_amount (REAL)
+  - paid_amount (REAL)
+  - change_amount (REAL)
+  - payment_method (TEXT)
+  - user_id (INTEGER)
+
+LATEST DATA (Tail 10):
+  id | code | date | status | subtotal | discount_total | tax_total | total_amount | paid_amount | change_amount | payment_method | user_id
+  1 | TRX20251222112206500 | 2025-12-22 11:22:07 | COMPLETED | 6000.0 | 0.0 | 660.0 | 6660.0 | 6660.0 | 0.0 | CASH | 2
+
+============================================================
+
+TABLE: users (Rows: 2)
+----------------------------------------
+SCHEMA:
+  - id (INTEGER) [PK]
+  - username (TEXT) NOT NULL
+  - password_hash (TEXT) NOT NULL
+  - device_id (TEXT)
+  - plan_type (TEXT)
+  - plan_expired_at (TIMESTAMP)
+  - created_at (TIMESTAMP)
+
+LATEST DATA (Tail 10):
+  id | username | password_hash | device_id | plan_type | plan_expired_at | created_at
+  1 | admin | $2a$10$xbZgFCsDDSv63mJJ7wusaug4wYIk7QOH.edBnUNA9BXrDGMUf8FUW | None | premium | None | 2025-12-21 16:26:50
+  2 | admin1 | $2a$10$9v4i7HHTXIM73kuPROdZP.bw9.sp4bW5ARBFUuccJaQ2YU/mFRUVy | android | free | None | 2025-12-21 17:12:33
+
+============================================================

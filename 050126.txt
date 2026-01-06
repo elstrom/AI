@@ -1,0 +1,169 @@
+LAPORAN PERBAIKAN BUG SYSTEM (05 Januari 2026)
+=================================================
+
+1. ISU: TOKEN EXPIRATION
+------------------------
+Gejala:
+- Log server penuh dengan pesan error: "token has invalid claims: token is expired".
+- Aplikasi terus menerus mengirim data binary (stream gambar) meskipun token sudah kadaluarsa, menyebabkan "spam" error di server.
+
+Analisa & Temuan:
+- Ditemukan di kode Server (`go_server/internal/auth/handler.go`), token di-set berlaku selama 24 jam (`time.Now().Add(24 * time.Hour)`).
+- Aplikasi Mobile (ScanAI) belum memiliki mekanisme untuk mendeteksi error token expired secara reaktif saat streaming data binary.
+
+Solusi & Perbaikan Implementasi:
+a) Deteksi Error:
+   - Menambahkan deteksi pesan "token is expired", "token has invalid claims", atau "Unauthorized" di `WebSocketService`.
+   - Deteksi berlaku untuk format pesan JSON maupun Text.
+
+b) Mekanisme Notifikasi (Toast 1x):
+   - Membuat *Static Callback* `AuthService.onTokenExpired` untuk mempermudah komunikasi antara Service dan UI tanpa stream yang kompleks.
+   - Mengimplementasikan listener di `CameraPage` yang memunculkan Toast "Token login expired. Silakan login ulang..." hanya satu kali saat kejadian.
+
+c) Penanganan Status & Logging:
+   - Saat token expired, status koneksi otomatis diubah menjadi `Server Mati / Tidak Terjangkau` (sesuai request).
+   - Membungkus semua logging error terkait token dengan pengecekan `if (AppConstants.isDebugMode)` agar log production tetap bersih.
+   - Auto-logout dilakukan via `AuthService.handleSessionExpired()`.
+
+2. ISU: NAVIGASI LOGOUT (LOGIN LOOP BUG)
+----------------------------------------
+Gejala:
+- Saat user menekan "Log Out" dan mencoba login kembali, aplikasi tidak berpindah ke halaman Kamera (tetap stuck di halaman Login).
+- User harus mematikan dan menyalakan ulang aplikasi agar bisa login normal.
+
+Analisa & Temuan:
+- Penyebab utama ada pada cara navigasi saat logout di `about_page.dart`.
+- Kode lama menggunakan `Navigator.pushNamedAndRemoveUntil('/login')`.
+- Perintah ini menghapus *seluruh* widget stack termasuk `AuthWrapper`.
+- `AuthWrapper` adalah komponen kritikal yang bertugas mendengarkan perubahan status `isAuthenticated`. Karena terhapus, tidak ada yang merespon saat user berhasil login kembali.
+
+Solusi & Perbaikan Implementasi:
+- Mengubah navigasi logout menjadi:
+  `Navigator.of(context).pushNamedAndRemoveUntil('/auth', (route) => false);`
+- Penjelasan: Kita mereset navigasi ke route `/auth`. Route ini memuat ulang `AuthWrapper`.
+- Hasil: `AuthWrapper` kembali aktif mendengarkan status. Saat user login, `AuthWrapper` mendeteksi perubahan dan otomatis mengarahkan ke `SplashScreen` lalu ke `CameraPage`.
+- Menambahkan import `AuthService` yang sempat tertinggal di `camera_page.dart` untuk memperbaiki error kompilasi.
+
+HASIL AKHIR
+-----------
+- Token Expired: Terdeteksi aman, User dapat notifikasi Toast, Aplikasi tidak crash/spam server.
+- Logout/Login: Berjalan mulus tanpa perlu restart aplikasi.
+- Production Ready: Log error disembunyikan di mode release.
+
+3. PERBAIKAN HALAMAN ABOUT & INFORMASI AKUN (05 Januari 2026 - Siang)
+---------------------------------------------------------------------
+Isu:
+- Halaman "About" masih menampilkan informasi teknis (URL Server, Port) yang kurang relevan bagi user umum.
+- User tidak bisa melihat detil akun yang sedang login di dalam aplikasi.
+
+Solusi & Perbaikan Implementasi:
+a) Model Data Baru (UserModel):
+   - Membuat `lib/models/user_model.dart` untuk penanganan data akun (ID, Username, Plan Type, Expiry).
+
+b) Sinkronisasi AuthService:
+   - Update `AuthService` untuk menyimpan data user ke Secure Storage saat login.
+   - Otomatis memuat data user (`currentUser`) saat aplikasi dibuka (init).
+   - Menghapus data user saat logout.
+
+c) Layout Baru Halaman About:
+   - Menghapus section "Technical Information".
+   - Menambahkan section "Account Information" yang dinamis menggunakan `Consumer<AuthService>`.
+   - Menampilkan Username, Tipe Plan (Free/Pro), dan User ID secara premium.
+   - Penambahan fitur "Auto Flash Mode" ke dalam daftar Key Features agar relevan dengan update terbaru.
+   - Pembersihan orphan code yang menyebabkan build error.
+
+4. IMPLEMENTASI ONBOARDING & TUTORIAL INTERAKTIF (05 Januari 2026 - Sore)
+--------------------------------------------------------------------------
+Tujuan: 
+Memberikan pemahaman mendalam kepada pengguna baru mengenai fitur dan cara penggunaan aplikasi ScanAI melalui antarmuka visual yang menarik dan interaktif.
+
+Proses Pengembangan:
+a) Iterasi 1: Konsep Dasar
+   - Membuat kerangka awal OnboardingPage dengan sistem slide dan toggle bahasa (ID/EN).
+   - Menggunakan mockups awal berbasis kode/widget replika.
+
+b) Iterasi 2: Peningkatan Visual (Mockup Highlight)
+   - Mengganti ikon statis dengan 'Mockup Widget' yang interaktif.
+   - Menambahkan animasi 'Pulse/Spotlight' (lingkaran berdenyut) untuk menyoroti bagian spesifik di UI (misal: tombol izin, login, panel kontrol) yang sedang dijelaskan dalam teks.
+
+c) Iterasi 3: High-Fidelity & Realisme (Screenshot Implementation)
+   - User meminta tampilan yang 100% akurat sesuai aplikasi asli.
+   - Mengganti widget replika dengan 8 Screenshot Asli dari aplikasi yang berjalan.
+   - Implementasi aset gambar ke assets/images/onboarding/ dan didaftarkan di pubspec.yaml.
+   - Mengintegrasikan Landing Page yang premium sebagai slide pembuka.
+
+Implementasi Final:
+1. Landing Page:
+   - Tampilan pembuka dengan logo animasi berdenyut dan sambutan selamat datang.
+2. Slide Edukasi (Total 9 Slide):
+   - Slide 1: Landing Page.
+   - Slide 2-4: Mekanisme Permission (Gate, Warning, Success).
+   - Slide 5: Login & Mode Offline (Menjelaskan akun demo 'admin1').
+   - Slide 6: Status Sistem (Indikator koneksi 'Ready/Scanning').
+   - Slide 7: Panel Kontrol (Flash, Foto, Ganti Kamera).
+   - Slide 8: Deteksi Pintar (Mode Streaming).
+   - Slide 9: About & Logout.
+3. Fitur Teknis:
+   - Dukungan Bahasa: Toggle ID (Bahasa Indonesia) dan EN (Inggris) yang persisten melintasi sesi aplikasi.
+   - Animasi Halus: Transisi antar slide dan animasi pulse pada highlight area.
+   - Navigasi Cerdas: Tombol 'Lewati', 'Lanjut', dan 'Mulai' yang responsif.
+   - Data Persistence: Status has_seen_onboarding disimpan di SharedPreferences sehingga onboarding hanya muncul 1x per instalasi.
+
+Status: Selesai & Terintegrasi Sempurna dengan UI Asli.
+
+membuat checklist playstore dengan nama scanai_playstore_checklist.xlsx
+isinya:
+No.	Kategori	Item	Persyaratan	Apa yang reviewer cek	Cara penuhi	Bukti yang disiapkan	Link kebijakan	Status	Catatan
+1	Akun & Status	Status akun developer	Akun harus dalam kondisi baik (good standing)	Riwayat strikes/suspensions	Pastikan tidak ada pelanggaran lain; jangan spam banding	Screenshot Play Console Policy Status	https://support.google.com/googleplay/android-developer/answer/9899234?hl=en	FALSE	
+2	Identitas Aplikasi	Package name	Gunakan package name baru (jangan yang sudah terkena backlist)	Apakah package name mengindikasikan app lama	Buat package baru yang unik	AAB baru dengan package name baru		FALSE	
+3	Identitas Aplikasi	Nama Aplikasi	Gunakan nama aplikasi baru & tidak menyesatkan	Nama tidak meniru app lain atau klaim berlebihan	Nama deskriptif & jujur	Store listing baru		FALSE	
+4	Store Listing	Short description	Jujur, tidak berlebihan	Klaim fitur utama sesuai fungsi	Tulis fitur yang benar-benar ada	Screenshot fitur di app		FALSE	
+5	Store Listing	Full description	Sinkron dengan Data Safety & Privacy Policy	Tidak ada klaim berlebihan (mis. '100% akurat')	Gunakan bahasa konservatif	Draft deskripsi		FALSE	
+6	Store Listing	Screenshots & video	Menunjukkan fitur sebenarnya	Screenshots bukan mock-up atau fitur yang belum ada	Tangkap layar fitur yang berfungsi	Screenshots & video demo		FALSE	
+7	Data Safety	Form Data Safety	Isi jujur sesuai apa yang dikumpulkan	Kesesuaian antara app behavior dan form	Isi berdasarkan kode/SDK	Dokumentasi data flow & screenshot form	https://support.google.com/googleplay/android-developer/answer/10787469?hl=en	FALSE	
+8	Privacy Policy	URL Privacy Policy	URL valid & dapat diakses	Isi kebijakan konsisten dengan Data Safety	Tulis privacy policy yang jelas (Camera, Upload, Retention)	Link kebijakan & halaman web		FALSE	
+9	Permissions	CAMERA	Hanya minta jika fitur benar-benar ada	Permission muncul di runtime & ada UI untuk justify	Minta permission saat user menekan tombol; beri alasan jelas	Video request permission & code snippet	https://support.google.com/googleplay/android-developer/answer/16558241?hl=en	FALSE	
+10	Permissions	STORAGE / MANAGE_EXTERNAL_STORAGE	Gunakan Storage Access Framework jika mungkin	Apakah storage permission benar-benar diperlukan	Minimize penggunaan; jelaskan di privacy policy	Justifikasi teknis	https://support.google.com/googleplay/android-developer/answer/16558241?hl=en	FALSE	
+11	Permissions	INTERNET	Jelaskan kenapa diperlukan (upload, model cloud)	Kesesuaian klaim offline/online	Jika offline-only, jangan request INTERNET	Flow jaringan & endpoint list		FALSE	
+12	Permissions	LOCATION / SENSITIVE	Hanya jika fitur sangat butuh lokasi	Justifikasi & UI consent	Hapus permission kecuali diperlukan	Use case & code	https://support.google.com/googleplay/android-developer/answer/16558241?hl=en	FALSE	
+13	Permission UX	Runtime permission flow	Permission diminta pada konteks yang jelas	Apakah permission muncul tiba-tiba atau kontekstual	Minta setelah user tekan action yang relevan	Video UX permission flow		FALSE	
+14	Fitur & Klaim	Klaim AI / 'scan otomatis'	Jangan klaim kemampuan yang belum terbukti	Apakah klaim sesuai hasil nyata	Gunakan bahasa hati-hati (mis. 'membantu mendeteksi')	Hasil pengujian & sample output		FALSE	
+15	Behavior	Deceptive behavior	Tidak menipu pengguna atau menampilkan UI palsu	Adanya hidden behavior, misleading UI	Tampilkan fungsi nyata tanpa trik	App walkthrough video		FALSE	
+16	Third-party SDKs	Analytics / Crash / Ads SDK	Transparan di Data Safety & Privacy Policy	Datanya dikirim ke 3rd party?	Daftar SDK & data yang dikirim	Dependencies list & SDK docs	https://support.google.com/googleplay/android-developer/answer/10787469?hl=en	FALSE	
+17	Data Protection	Enkripsi & Transit	Data sensitif harus dienkripsi in transit	Apakah menggunakan HTTPS/TLS	Pastikan API endpoint pakai HTTPS	API endpoint list & cert info		FALSE	
+18	Data Protection	Data retention & deletion	Jelaskan berapa lama data disimpan & cara hapus	Privacy policy menyebut retention & user delete	Sediakan fitur hapus & dokumentasi	Endpoint untuk delete & kebijakan		FALSE	
+19	Testing	Closed testing (internal/alpha/beta)	Uji dulu sebelum production	Kestabilan app & kesesuaian fitur	Gunakan track internal/closed testing	Link testing track & tester notes		FALSE	
+20	Compliance & Upload	Versi AAB & release notes	Jangan upload AAB lama / build yang sama	Apakah file sama dengan yang pernah ditolak	Build baru, kode & resource update	SHA/AAB metadata		FALSE	
+21	Support	Contact & support email	Sertakan email/URL support yang valid	Apakah support reachable	Siapkan inbox & respon standar	Email support active		FALSE	
+22	Billing & Paid features	In-app billing	Gunakan Google Play Billing untuk pembelian digital	Apakah transaksi bypass Play billing	Implementasikan Play Billing jika perlu	Implementation notes		FALSE	
+23	Final review	Self-audit sebelum submit	Checklist internal sudah terpenuhi	Kesesuaian seluruh elemen	Checklist complete + evidence folder	Folder evidence (screenshots, video, docs)		FALSE	
+24	AI & Model	Lisensi model AI	Lisensi model mengizinkan distribusi & penggunaan komersial	Legal right atas model	Simpan dokumen lisensi / sumber model	File lisensi / URL		FALSE	
+25	AI & Model	On-device vs Cloud inference	Jelaskan pemrosesan lokal / server	Kesesuaian Data Safety & behavior	Dokumentasikan flow inference	Diagram arsitektur	https://support.google.com/googleplay/android-developer/answer/10787469	FALSE	
+26	Native / NDK	Native libraries (.so)	Tidak ada perilaku tersembunyi / API terlarang	Isi binary native	Audit library & ABI	Daftar .so & ABI		FALSE	
+27	Native / NDK	RKNN / NPU usage	Pemakaian hardware sesuai klaim	Tidak misleading performance claim	Batasi klaim & dokumentasi	Dokumen teknis		FALSE	
+28	Security	API key & secret	Tidak hardcoded	Reverse engineering risk	Server-side key / obfuscation	Build config		FALSE	
+29	Camera & Media	Background camera usage	Tidak ambil gambar tanpa interaksi user	Background behavior	Foreground-only + indikator	Video demo	https://support.google.com/googleplay/android-developer/answer/16558241	FALSE	
+30	Sensitive Data	Face / ID document handling	Tujuan jelas, tidak disalahgunakan	Sensitive data misuse	Batasi scope & retention	Privacy policy section		FALSE	
+31	Security	Encryption & export compliance	Enkripsi sesuai regulasi	Use of strong crypto	Gunakan TLS & dokumentasi	Endpoint list		FALSE	
+32	UX & Overlay	Overlay / Accessibility	Tidak disalahgunakan	Overlay abuse	Hapus jika tidak perlu	Permission list	https://support.google.com/googleplay/android-developer/answer/16558241	FALSE	
+33	Compliance	Regulasi lokal & global	Patuh GDPR / PDPA jika berlaku	Hak pengguna atas data	Sediakan delete/request flow	Form & policy		FALSE	
+34	Ads & Monetization	Iklan & tracking	Disclosure jelas	Tracking tersembunyi	Update Data Safety	SDK list	https://support.google.com/googleplay/android-developer/answer/10787469	FALSE	
+35	Release	Build provenance	AAB baru, bukan reuse	Build fingerprint	Increment version & clean build	SHA / version code		FALSE	
+36	Target API & Build	Target SDK	Target Android 15 (API level 35) atau higher (wajib untuk new apps/updates sejak Aug 31, 2025)	Target SDK di manifest/Gradle dan Play Console	Set targetSdkVersion=35+ dan update build tools; ajukan extension jika perlu	AndroidManifest / build.gradle / Play Console screenshots	https://support.google.com/googleplay/android-developer/answer/11926878?hl=en	FALSE	
+37	Content Rating	Content Rating (IARC Questionnaire)	Wajib isi IARC questionnaire untuk rating usia; pastikan audience tidak diset ke Children bila bukan target	Kesesuaian jawaban questionnaire dan target audience di Play Console	Isi questionnaire jujur; set target audience sesuai	Screenshot IARC questionnaire & Play Console audience settings	https://support.google.com/googleplay/android-developer/answer/9857753?hl=en	FALSE	
+38	Graphic Assets	Graphic Assets Best Practices	Icon, feature graphic, screenshot: tidak mengandung misleading badges/ranking atau referensi ke platform kompetitor	Elemen grafis yang menyesatkan atau promosi pihak ketiga	Gunakan aset yang jujur, tanpa badge/award palsu; edit screenshot untuk mencerminkan UI nyata	Original screenshots & source assets		FALSE	
+39	Permissions	Prominent In-App Disclosure (sensitive permissions)	Untuk permission sensitif (terutama jika ada background usage) wajib disclosure & consent jelas sebelum request	Adanya disclosure & demonstrasi consent sebelum permission dialog muncul	Tambahkan dialog in-app jelas, tampilkan video demo disclosure di evidence	Video demo disclosure & flow diagram	https://support.google.com/googleplay/android-developer/answer/9876936?hl=en	FALSE	
+40	Permissions	Photo/Video Permissions Policy	Jika minta storage/media permission yang luas, wajib justify atau gunakan Photo Picker	Apakah broad storage permission benar-benar diperlukan	Gunakan Photo Picker atau jelaskan use-case; minimal permission	Code snippet/UX showing Photo Picker or justification	https://support.google.com/googleplay/android-developer/answer/10787469?hl=en	FALSE	
+41	Monetization	Financial Features Declaration	Isi declaration di Play Console jika ada IAP/subscription (atau kosongkan jujur jika tidak ada)	Apakah ada fitur finansial yang tidak dideklarasikan	Lengkapi declaration & pastikan pembayaran pakai Play Billing	Screenshot declaration & billing implementation notes	https://support.google.com/googleplay/android-developer/answer/9858738?hl=en	FALSE	
+42	Content	Age-Restricted Content	Jika ada konten restricted, pastikan mekanisme blocking untuk minors	Apakah ada proteksi usia & rating sesuai	Implement age-gates & content filters	Flow diagram & screenshots		FALSE	
+43	Generative AI	Generative AI Specific Requirements	Jika app generate content: sediakan in-app reporting/flagging & rigorous testing; jika hanya analyze, gunakan klaim hati-hati	Adanya reporting flow & mitigations untuk offensive content	Tambahkan reporting button, moderation flow, test logs	Test cases & reporting flow docs		FALSE	
+44	Signing & Packaging	Play App Signing	Disarankan atau diwajibkan untuk new apps (gunakan Play App Signing)	Apakah app enrolled di Play App Signing	Aktifkan Play App Signing di Play Console	Play Console setting screenshot	https://support.google.com/googleplay/android-developer/answer/9842756?hl=en	FALSE	
+45	Signing & Packaging	App Bundle (AAB) Format	Wajib upload App Bundle (.aab), bukan APK untuk new apps	Format artefak yang diupload	Build & upload AAB	AAB file & build logs	https://support.google.com/googleplay/android-developer/answer/9859152?hl=en	FALSE	
+46	Store Listing	Store listing page size (16 kb page size)	Pastikan konten listing ringkas; perhatikan batas metadata/asset kecil (user requested note: 16 kb)	Kelengkapan & ukuran metadata/asset terkait (deskripsi/short desc)	Compress/trim long descriptions, gunakan external links for long docs	Counts/size metrics of description & assets		FALSE	
+
+membuat CVisionTraining.xlsx 
+isinya:
+Tanggal Training	Thumbnail	Nama Item / Label	Environment			Jenis Task	Anotasi	Jumlah Image	Note
+			Angle / Sudut Kamera	Jarak Kamera	Pencahayaan				
+2026/01/05		kue mangkok	kanan, kiri, atas, memutar	10-20 cm	cahaya ruang (gelap,terang)	BBoX	225	156	terdapat 19 gambar only, 52 gambar yang tergabung dengan gemblong
+2026/01/05		gemblong	kanan, kiri, atas, memutar	10-20 cm	cahaya ruang (gelap,terang)	BBoX	158	156	terdapat 42 gambar only, 52 gambar yang tergabung dengan gemblong

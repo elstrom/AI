@@ -1,0 +1,12 @@
+# Pyrefly Configuration
+# This file enables type checking for the project
+
+[pyrefly]
+# Enable type error reporting
+disableTypeErrors = false
+
+# Optional: Configure type checking strictness
+# strictMode = true
+
+# Optional: Specify Python version for type checking
+# pythonVersion = "3.10"

@@ -1,0 +1,179 @@
+===============================================
+LAPORAN HARIAN
+===============================================
+Tanggal: 05 Januari 2026
+===============================================
+1. AKTIVITAS PENGEMBANGAN UTAMA
+===============================================
+
+1.1. Perbaikan Stabilitas Auth & Token (System Reliability):
+- Implementasi mekanisme deteksi token expired yang reaktif (mendeksi pesan "invalid claims"/"Unauthorized")
+- Penghentian "spam" error di server dengan memutus stream data binary saat token mati
+- Implementasi Callback Statik `AuthService.onTokenExpired` untuk notifikasi UI yang efisien
+- User Experience: Menampilkan Toast "Token login expired" (hanya 1x) dan auto-logout bersih
+
+1.2. Perbaikan Navigasi Logout (Critical Bug):
+- Penyelesaian masalah "Login Loop" dimana user stuck di halaman login setelah logout
+- Perubahan strategi navigasi dari `pushNamedAndRemoveUntil('/login')` menjadi reset ke `/auth`
+- Pemulihan fungsi `AuthWrapper` yang sebelumnya terhapus dari stack, memastikan listener auth state aktif kembali
+
+1.3. Peningkatan Visual Halaman About (Informasi Akun):
+- Penghapusan bagian "Technical Information" (URL/Port) yang membingungkan user awam
+- Integrasi `UserModel` untuk menampilkan data akun asli: Username, User ID, dan Plan Type
+- Penambahan "Auto Flash Mode" ke dalam daftar Key Features
+
+1.4. Implementasi Onboarding & Tutorial Interaktif (New Feature):
+- Pengembangan modul Onboarding lengkap dengan 9 slide edukatif
+- Implementasi sistem dua bahasa (ID/EN) yang persisten
+- Integrasi mockup visual interaktif dengan animasi "Pulse/Spotlight"
+- Penggunaan screenshot real-app (High-Fidelity) menggantikan icon vektor
+- Penyimpanan status `has_seen_onboarding` untuk UX yang mulus
+
+1.5. Administrasi & Kepatuhan (Store Readiness):
+- Pembuatan dokumen `scanai_playstore_checklist.xlsx` berisi 46 poin persyaratan Google Play
+- Pembuatan dokumen `CVisionTraining.xlsx` untuk tracking dataset Computer Vision
+
+===============================================
+2. STATUS KONEKSI SERVER HARI INI
+===============================================
+
+2.1. Penanganan Token Expired:
+- Log error server berkurang drastis (tidak ada spam "token has invalid claims" dari binary stream)
+- Status koneksi di aplikasi otomatis berubah menjadi "Server Mati / Tidak Terjangkau" saat token habis
+- Auto-logout berjalan mulus tanpa crash
+
+2.2. Mode Demo & Offline:
+- Konfirmasi slide onboarding menjelaskan akun demo `admin1` berfungsi normal
+
+===============================================
+3. IMPLEMENTASI KODE BARU
+===============================================
+
+3.1. Modul Services & Auth:
+- File `lib/services/auth_service.dart`:
+  - Logika penyimpanan data user (`UserModel`) ke Secure Storage
+  - Static callback `onTokenExpired`
+- File `lib/services/websocket_service.dart`:
+  - Interceptor error untuk mendeteksi `invalid claims` pada pesan JSON & Text
+
+3.2. Modul UI & Navigasi:
+- File `lib/presentation/pages/onboarding_page.dart`:
+  - Struktur widget slide, animasi pulse, logika bahasa, dan navigasi
+- File `lib/presentation/pages/about_page.dart`:
+  - Redesain layout, integrasi `Consumer<AuthService>`
+- File `lib/presentation/pages/camera_page.dart`:
+  - Listener untuk trigger Toast saat token expired
+
+3.3. Modul Data & Aset:
+- File `lib/models/user_model.dart`: Model baru untuk standardisasi data user
+- Assets: Penambahan 8 gambar screenshot onboarding di `assets/images/onboarding/`
+- Dokumen Admin:
+  - `scanai_playstore_checklist.xlsx` (46 Item Kepatuhan)
+  - `CVisionTraining.xlsx` (Log Data Training)
+
+===============================================
+4. ANALISIS LOG APLIKASI
+===============================================
+
+4.1. Server Logs (Before vs After):
+- Before: Ratusan baris error "token invalid" per detik karena stream gambar tetap jalan.
+- After: Satu atau dua log error muncul, diikuti pemutusan koneksi bersih.
+
+4.2. Onboarding Logs:
+- Tracking transisi slide dan pemilihan bahasa berjalan sesuai harapan.
+- "Permission requested" tercatat jelas pada slide permission.
+
+===============================================
+5. PERUBAHAN KESELURUHAN PROYEK
+===============================================
+
+5.1. User Experience (First Impressions):
+- Aplikasi kini memiliki alur pengenalan (Onboarding) yang profesional untuk pengguna baru.
+- Halaman "About" terasa lebih personal dengan data akun yang nyata.
+
+5.2. Reliability:
+- Isu navigasi "stuck" yang sangat mengganggu flow penggunaan sudah hilang total.
+- Handling sesi login jauh lebih robust dan sopan (memberi tahu user kenapa logout).
+
+5.3. Kesiapan Rilis (Admin):
+- Tersedianya checklist komprehensif memastikan tidak ada policy Google Play yang terlewat (mengurangi risiko rejection).
+
+===============================================
+6. IDENTIFIKASI MASALAH
+===============================================
+
+6.1. Masalah Terselesaikan:
+- [CRITICAL] Token expiration menyebabkan spam log server & aplikasi tidak responsif.
+- [CRITICAL] Navigasi logout membuat aplikasi butuh restart (Login Loop).
+- [UX] User baru tidak paham cara pakai fitur (Solved by Onboarding).
+- [UX] Halaman About menampilkan info teknis raw yang tidak perlu.
+
+6.2. Masalah Potensial:
+- Perlu memastikan semua item di `scanai_playstore_checklist.xlsx` yang berstatus FALSE segera ditindaklanjuti.
+- Dataset gambar pada `CVisionTraining.xlsx` mungkin perlu ditambah variasi background.
+
+===============================================
+7. DEEP DIVE: ONBOARDING & TUTORIAL INTERAKTIF
+===============================================
+
+7.1. Proses Iterasi Pengembangan:
+- Iterasi 1 (Konsep): Setup dasar slider PageView dan toggle bahasa.
+- Iterasi 2 (Visual): Mengganti ikon statis dengan widget mockup, menambahkan animasi Pulse pada area fokus.
+- Iterasi 3 (Realisme): Permintaan user untuk "Pixel Perfect", mengganti widget dengan screenshot asli aplikasi.
+
+7.2. Struktur Slide Edukasi:
+- Slide 1: Landing Page (Welcome)
+- Slide 2-4: Permission Flow (Gate -> Warning -> Success)
+- Slide 5: Login & Akun Demo
+- Slide 6: Penjelasan Status Sistem
+- Slide 7: Panel Kontrol (Flash/Camera Switch)
+- Slide 8: Mode Streaming/Deteksi
+- Slide 9: Penutup & CTA Masuk
+
+7.3. Aspek Teknis:
+- Data Persistence: Menggunakan SharedPreferences agar onboarding one-time-only.
+- Smooth Transition: Custom duration untuk animasi page switch.
+
+===============================================
+8. DOKUMENTASI ADMINISTRASI & DATA
+===============================================
+
+8.1. Checklist Play Store (`scanai_playstore_checklist.xlsx`):
+- Total 46 Item Checklist yang mencakup:
+  - Akun & Identitas (Package name, Store Listing)
+  - Permissions (Camera, Storage, Internet, Location)
+  - Data Safety & Privacy Policy
+  - Compliance (Ads, Content Rating, Generative AI)
+  - Technical (AAB, Signing, Native Libs)
+- Semua item saat ini berstatus: FALSE (Perlu pengecekan manual satu per satu).
+
+8.2. Log Training CVision (`CVisionTraining.xlsx`):
+- Tanggal: 05/01/2026
+- Item 1: Kue Mangkok
+  - Env: 10-20cm, cahaya ruang
+  - Qty: 225 Image (Valid: 156, Note: 19 file only, 52 gabung gemblong)
+- Item 2: Gemblong
+  - Env: 10-20cm, cahaya ruang
+  - Qty: 158 Image (Valid: 156, Note: 42 file only, 52 gabung gemblong)
+
+===============================================
+9. PENCAPAIAN HARI INI
+===============================================
+
+Selesai:
+- Fix Critical Bug: Token Expiration Spam & Handling.
+- Fix Critical Bug: Login Loop Navigation.
+- Implementasi Fitur Baru: Onboarding Page (9 Slide + Interaktif).
+- Update Fitur: About Page dengan User Info Real & Layout Baru.
+- Administrasi: Pembuatan Checklist Kepatuhan Play Store (46 Poin).
+- Data: Logging awal dataset training CVision.
+- Integrasi UI: Mockup Onboarding menggunakan aset Screenshot Asli.
+
+===============================================
+10. RENCANA BESOK
+===============================================
+
+- [ ] Mulai mengisi dan melengkapi item `scanai_playstore_checklist.xlsx` (Target: Permission & Data Safety).
+- [ ] Melakukan training model ulang dengan dataset yang baru dicatat di `CVisionTraining.xlsx`.
+- [ ] Final Sanity Check seluruh alur aplikasi dari Onboarding -> Login -> Deteksi -> Logout.
+- [ ] Menyiapkan aset grafis (Feature Graphic/Icon) sesuai standar Play Store.

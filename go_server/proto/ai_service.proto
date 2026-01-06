@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package ai_service;
+
+option go_package = "go_server/proto";
+
+service AIService {
+  rpc ProcessFrame(FrameRequest) returns (FrameResponse);
+  rpc ProcessBatchFrames(BatchFrameRequest) returns (BatchFrameResponse);
+  rpc GetModelInfo(Empty) returns (ModelInfoResponse);
+  rpc GetServerStats(Empty) returns (ServerStatsResponse);
+}
+
+message Empty {}
+
+message FrameRequest {
+  bytes frame_data = 1;
+  int32 width = 2;
+  int32 height = 3;
+  int32 channels = 4;
+  string format = 5;  // 'rgb', 'jpeg', 'yuv420'
+}
+
+message BBox {
+  float x_min = 1;
+  float y_min = 2;
+  float x_max = 3;
+  float y_max = 4;
+}
+
+message Detection {
+  string class_name = 1;
+  float confidence = 2;
+  BBox bbox = 3;
+}
+
+message AIResults {
+  repeated Detection detections = 1;
+}
+
+message FrameResponse {
+  bool success = 1;
+  string message = 2;
+  string frame_id = 3;
+  string timestamp = 4;
+  float processing_time_ms = 5;
+  AIResults ai_results = 6;
+}
+
+message BatchFrameRequest {
+  repeated FrameRequest frames = 1;
+}
+
+message BatchFrameResponse {
+  bool success = 1;
+  string message = 2;
+  repeated FrameResponse responses = 3;
+  float total_processing_time = 4;
+}
+
+message ModelInfoResponse {
+  bool success = 1;
+  string model_path = 2;
+  map<string, string> input_info = 3;
+  map<string, string> output_info = 4;
+}
+
+message ServerStatsResponse {
+  bool success = 1;
+  int32 pool_size = 2;
+  int32 in_use = 3;
+  string status = 4;
+}

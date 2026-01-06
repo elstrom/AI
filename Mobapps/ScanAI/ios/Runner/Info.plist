@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>ScanAI</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>ScanAI</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	
+	<!-- ====== PERFORMANCE SETTINGS ====== -->
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	
+	<!-- ====== PERMISSIONS ====== -->
+	<!-- Camera: Required for object detection streaming -->
+	<key>NSCameraUsageDescription</key>
+	<string>ScanAI needs camera access to stream video for real-time object detection. This enables automatic product scanning at checkout.</string>
+	
+
+	<!-- Photo Library: Only for saving captured detection images (Add-Only) -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>ScanAI needs permission to save captured images to your photo library.</string>
+	
+	<!-- Local Network: Required for AI server communication -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>ScanAI needs access to your local network to communicate with the AI analysis server and PosAI cashier application on the same network.</string>
+	
+	<!-- Bonjour Services: For local network service discovery -->
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_scanai._tcp</string>
+		<string>_posai._tcp</string>
+	</array>
+	
+	<!-- ====== URL SCHEME (Inter-App Communication) ====== -->
+	<!-- ScanAI's own URL scheme (for PosAI to launch ScanAI) -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.banwibu.scanai</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>scanai</string>
+			</array>
+		</dict>
+	</array>
+	
+	<!-- Apps that ScanAI can query/launch (PosAI) -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>posai</string>
+	</array>
+	
+	<!-- ====== BACKGROUND EXECUTION ====== -->
+	<!-- 
+	     NOTE: iOS background execution is LIMITED compared to Android.
+	     We use UIBackgroundTask in Swift code for short background tasks.
+	     For sustained background work, user must keep app in foreground.
+	     
+	     IMPORTANT: Only include modes you ACTUALLY USE, or App Store will reject!
+	-->
+	<key>UIBackgroundModes</key>
+	<array>
+		<!-- Background fetch: For refreshing data periodically -->
+		<string>fetch</string>
+		<!-- Background processing: For long-running tasks when user plugs in -->
+		<string>processing</string>
+	</array>
+	
+	<!-- Background Task Identifiers (for BGTaskScheduler) -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.banwibu.scanai.refresh</string>
+	</array>
+	
+	<!-- ====== NETWORK CONFIGURATION ====== -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Allow HTTP for local network AI server communication -->
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<!-- Explicitly allow local networking -->
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	
+	<!-- ====== APP STORE COMPLIANCE ====== -->
+	<!-- Export Compliance: App does NOT use custom encryption -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	
+	<!-- ====== UI CONFIGURATION ====== -->
+	<key>UIRequiresFullScreen</key>
+	<false/>
+	<key>UIStatusBarHidden</key>
+	<false/>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<true/>
+	
+	<!-- ====== HARDWARE REQUIREMENTS ====== -->
+	<!-- Only require camera - arm64 is implicit for iOS 11+ -->
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
+</dict>
+</plist>

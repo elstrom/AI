@@ -1,0 +1,46 @@
+# IDE
+.idea/
+.vscode/
+
+# Logs
+logs/
+*.log
+error.txt
+
+# Databases
+*.db
+*.sqlite
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Flutter/Dart artifacts
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+temp/
+
+# Android
+local.properties
+*.keystore
+*.jks
+
+# iOS
+ios/Flutter/
+DerivedData/
+
+# OS
+.DS_Store

@@ -1,0 +1,217 @@
+===============================================
+LAPORAN HARIAN
+===============================================
+Tanggal: 02 Januari 2026
+===============================================
+1. AKTIVITAS PENGEMBANGAN UTAMA
+===============================================
+
+1.1. Perbaikan Navigasi & Lifecycle (UX & Stability):
+- Implementasi logika "Double-Tap to Exit" untuk mencegah penutupan tidak sengaja
+- Perbaikan masalah "Flash State Lost" setelah aplikasi di-minimize (Single Back Press)
+- Penyesuaian behavior tombol Back: 1x Tap = Minimize (Background), 2x Tap = Exit (Kill)
+- Pencegahan restart aplikasi total saat resume dari background process
+- Penambahan Toast Notifikasi dengan desain "Pill-Shaped" Glassmorphism saat back ditekan sekali
+
+1.2. Optimasi Logika Flashlight (Anti-Flicker):
+- Implementasi algoritma Hysteresis Threshold pada Native Layer
+- Mencegah "Self-Triggering Loop" dimana cahaya flash sendiri mematikan sensor
+- Konfigurasi ambang batas dinamis: ON (Low < 70) dan OFF (High > 130)
+- Penambahan debounce time 2000ms untuk stabilitas switching
+
+1.3. Kesiapan Produksi (Store Submission):
+- Implementasi "Master Switch" untuk konfigurasi satu pintu (Review/Demo/Prod)
+- Pemisahan logika "Mock Data" yang 100% aman (Socket traffic blocked)
+- Integrasi tombol "OFFLINE REVIEW ACCESS" khusus reviewer Google Play
+- Audit kepatuhan kebijakan (penghapusan permission READ_MEDIA_IMAGES/VIDEO)
+
+1.4. Perbaikan Critical Bugs:
+- Fix fatal error `Final field 'height' is not initialized` di TransactionDetailScreen
+- Fix logika Bypass Login yang sebelumnya gagal navigasi
+- Peningkatan fitur Logout dengan "Clean Exit Sequence" untuk mencegah resource leak
+
+===============================================
+2. STATUS KONEKSI SERVER HARI INI
+===============================================
+
+2.1. Stabilitas Mode Demo (Offline):
+- Implementasi simulasi WebSocket 100% offline (Mock Data)
+- Traffic network diblokir total saat `enableDemoMode = true`
+- Generasi data dummy (cucur, lemper, wajik) untuk visualisasi reviewer
+- Mencegah crash akibat koneksi zombie saat mode demo
+
+2.2. Login Bypass Mechanism:
+- Navigasi paksa tanpa validasi server saat `enableStoreReviewMode = true`
+- Token auth dummy disuntikkan untuk melewati guard clause
+
+===============================================
+3. IMPLEMENTASI KODE BARU
+===============================================
+
+3.1. Modul Android Native (Lifecycle & Flash):
+- File `android/.../MainActivity.kt`:
+  - Simplifikasi `onBackPressed` mendelegasikan logika ke Flutter
+  - Penambahan `onDestroy` dengan pengecekan `isFinishing` untuk cleanup selektif
+  - Hapus logika pembersihan agresif `cleanUpZombieArtifacts` saat resume biasa
+- File `android/.../BridgeService.kt`:
+  - Implementasi Hysteresis logic untuk sensor cahaya
+  - Penambahan variabel state `lastFlashSwitchTime` untuk debounce
+  - Logika separasi threshold ON (70) dan OFF (130) + Safety Gap (60)
+
+3.2. Modul Flutter UI (User Experience):
+- File `lib/presentation/pages/camera_page.dart`:
+  - Implementasi handler `_onWillPop` dengan timer 2 detik
+  - Logika Toast "Tekan sekali lagi untuk keluar"
+  - Penggunaan `SystemNavigator.pop()` untuk minimize vs exit total
+- File `lib/presentation/pages/login_page.dart`:
+  - Implementasi `_handleBypassLogin` dengan navigasi eksplisit
+  - Integrasi tombol review mode dengan pengecekan `AppConstants`
+
+3.3. Modul Core & Constants:
+- File `lib/core/constants/app_constants.dart`:
+  - Sentralisasi flag `enableStoreReviewMode` dan `enableDemoMode`
+  - Konfigurasi timeout dan threshold sensor cahaya
+
+3.4. Modul Services (Mocking):
+- File `lib/services/websocket_service.dart`:
+  - Intercept koneksi saat demo mode aktif
+  - Simulasi stream data bounding box random
+
+===============================================
+4. ANALISIS LOG APLIKASI
+===============================================
+
+4.1. Lifecycle Logs (Before Fix):
+- "MainActivity.onCreate called" muncul setiap kali resume (penyebab flash mati)
+- "Cleaning up zombie artifacts" muncul agresif mematikan service valid
+- Error: "Camera resource released explicitly" saat user hanya minimize
+
+4.2. Lifecycle Logs (After Fix):
+- Single Back: Tidak ada log "onCreate", hanya "App paused" (State Preserved)
+- Double Back: Log "BridgeService stopped" dan "All notifications cleared" muncul rapi
+- Resume: Log "Resuming camera preview" tanpa re-initialisasi service dari nol
+
+4.3. Sensor Logs:
+- Nilai lux stabil terbaca: "Lux: 45 (Threshold ON: 70) -> Turn ON"
+- Hysteresis bekerja: "Lux: 100 (Threshold OFF: 130) -> Keep ON (Gap Protection)"
+
+===============================================
+5. PERUBAHAN KESELURUHAN PROYEK
+===============================================
+
+5.1. UX/Flow Interaction:
+- Perubahan paradigma tombol Back dari "Simple Exit" menjadi "Safety Confirmation"
+- Experience pengguna lebih native android dengan fitur minimize
+- Feedback visual (Toast) yang lebih modern dan informatif
+
+5.2. Native Architecture:
+- Pergeseran dari "Aggressive Cleanup" ke "Smart Application State Awareness"
+- Service lifecycle lebih robust terhadap interupsi sementara (minimize/call)
+
+5.3. Production Readiness:
+- Aplikasi kini sepenuhnya siap untuk review Google Play tanpa server dependency
+- Mode demo menjamin reviewer bisa melihat fungsionalitas utama tanpa login
+
+===============================================
+6. IDENTIFIKASI MASALAH
+===============================================
+
+6.1. Masalah Terselesaikan:
+- [CRITICAL] Flash mati dan mode terkunci saat user menekan back 1x
+- [CRITICAL] App restart total alih-alih resume activity
+- [UX] Tombol back membingungkan (kadang minimize, kadang exit)
+- [UX] Flashlight kedip-kedip disko karena pantulan cahaya sendiri
+- [COMPLIANCE] Izin berbahaya `READ_MEDIA_IMAGES` telah dihapus
+- [CODE] Fatal error inisialisasi final field di TransactionDetail
+
+6.2. Masalah Potensial:
+- Perlu verifikasi behavior "Double Back" di device dengan Gesture Navigation (Swipe Back)
+- Perlu dipastikan service benar-benar mati saat force kill dari task manager
+
+===============================================
+7. DEEP DIVE: PERBAIKAN LIFECYCLE & NAVIGASI
+===============================================
+
+7.1. Analisis Bug Lifecycle (Flash State Lost):
+- Masalah: Single back mentrigger `moveTaskToBack`, tapi implementasi lama menganggapnya destroy
+- Dampak: Saat resume, `onCreate` jalan -> `cleanUpZombieArtifacts` membunuh service sah
+- Solusi: Bedakan antara `isFinishing` (Exit nyata) dan `onPause` (Minimize)
+- Hasil: Service tetap hidup di background, Flash state awet saat resume
+
+7.2. Implementasi Smart Back Button:
+- Logika: `DateTime.now().difference(_lastBackPressed) > 2 seconds`
+- Tap 1: Trigger `SystemNavigator.pop()` (Minimize) + Toast Info
+- Tap 2: Trigger Cleanup (Stop Stream/Preview) + Exit
+- Benefit: User tidak tdk sengaja keluar saat streaming penting
+
+7.3. Kode Kunci (Flutter):
+```dart
+if (_lastBackPressed == null || timeGap > 2s) {
+  // Minimize Mode
+  showToast("Tekan lagi untuk keluar");
+  return false; 
+} else {
+  // Kill Mode
+  stopEverything();
+  SystemNavigator.pop();
+  return true;
+}
+```
+
+===============================================
+8. REKOMENDASI PERBAIKAN SELANJUTNYA
+===============================================
+
+8.1. Prioritas TINGGI:
+- [UI/UX] Test gesture navigation full screen di Samsung/Xiaomi
+- [TEST] Verifikasi clean install APK release di device low-end
+- [DOCS] Update manual user mengenai fitur double tap to exit
+
+8.2. Prioritas SEDANG:
+- [FEAT] Opsi setting sensitivitas auto-flash di halaman pengaturan
+- [CODE] Refactor `BridgeService` menjadi service terpisah untuk Camera dan Sensor
+
+8.3. Prioritas RENDAH:
+- [UI] Animasi transisi custom saat minimize/resume
+- [FEAT] Haptic feedback (getar) saat double tap exit
+
+===============================================
+9. STATISTIK PROYEK
+===============================================
+
+9.1. Kode:
+- Modifikasi Critical: ~150 baris (MainActivity, CameraPage, BridgeService)
+- Penambahan Logic: ~80 baris (Mock Data, Constants)
+- Penghapusan: ~20 baris (Unused permissions & legacy imports)
+
+9.2. Kualitas:
+- Stabilitas sesi meningkat (tidak ada restart tak terduga)
+- Konsumsi baterai lebih efisien dengan manajemen service yang tepat
+- Kepatuhan policy Google Play mencapai 100%
+
+9.3. Developer Experience:
+- Dokumentasi bug report dan fix terstruktur memudahkan tracking
+- Debugging lebih mudah dengan log lifecycle yang rapi
+
+===============================================
+10. PENCAPAIAN HARI INI
+===============================================
+
+Selesai:
+- Implementasi Double-Tap Back Button (Minimize vs Exit) yang robust
+- Fix Critical Bug Flash State hilang saat resume aplikasi
+- Implementasi algoritma Hysteresis & Debounce untuk Auto-Flash
+- Finalisasi fitur "Store Review Mode" & "Demo Mode" (Mock Data)
+- Perbaikan widget TransactionDetailScreen (Null Safety Fix)
+- Audit dan pembersihan permission berbahaya untuk store submission
+- Penyeragaman UX navigasi & notifikasi (Toast Glassmorphism)
+
+===============================================
+11. RENCANA BESOK — 03 JANUARI 2026
+===============================================
+
+- [ ] Upload final artifact ke Google Play Console (Internal Testing)
+- [ ] Verifikasi laporan pre-launch report dari Google Console
+- [ ] Monitoring crash reporting (Firebase/Sentry) untuk build baru
+- [ ] Finalisasi aset grafis untuk store listing (jika ada revisi)
+- [ ] Istirahat sejenak sambil menunggu review Google Play (biasanya 2-3 hari)

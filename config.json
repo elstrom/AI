@@ -1,0 +1,138 @@
+{
+  "python_ai": {
+    "enabled": true,
+    "command": "python",
+    "args": [
+      "main.py"
+    ],
+    "config": "config.json",
+    "host": "0.0.0.0",
+    "port": 50051,
+    "wait_for_startup": true,
+    "startup_timeout": 30,
+    "process_names": [
+      "python",
+      "main.py"
+    ],
+    "graceful_shutdown_timeout": 30
+  },
+  "go_server": {
+    "enabled": true,
+    "command": "go",
+    "args": [
+      "run",
+      "cmd/server/main.go"
+    ],
+    "config": "../config.json",
+    "host": "0.0.0.0",
+    "port": "8080",
+    "wait_for_startup": true,
+    "startup_timeout": 120,
+    "working_dir": "go_server",
+    "process_names": [
+      "go",
+      "main"
+    ],
+    "graceful_shutdown_timeout": 30
+  },
+  "server": {
+    "host": "0.0.0.0",
+    "port": "8080"
+  },
+  "websocket": {
+    "path": "/ws"
+  },
+  "connection": {
+    "timeout_user_online": 300
+  },
+  "database": {
+    "path": "../scanai.db"
+  },
+  "auth": {
+    "secret_key": "scanai_secret_key_change_in_production"
+  },
+  "renderer": {
+    "compression_type": "gzip",
+    "compression_level": 6,
+    "enable_progressive": true,
+    "progressive_levels": 3,
+    "progressive_delay_ms": 100,
+    "default_quality": 80,
+    "min_quality": 30,
+    "max_quality": 100,
+    "quality_adjustment": true,
+    "max_buffer_size": 10485760,
+    "flush_interval_ms": 1000
+  },
+  "health_check": {
+    "enabled": true,
+    "interval": 10,
+    "endpoints": [
+      "http://localhost:8080/health",
+      "http://localhost:8080/metrics"
+    ]
+  },
+  "grpc": {
+    "host": "localhost",
+    "port": "50051",
+    "max_workers": 30,
+    "direct_inference": true
+  },
+  "decoder": {
+    "use_turbojpeg": true,
+    "turbojpeg_quality": 95,
+    "fallback_to_opencv": true
+  },
+  "model": {
+    "path": "Model_train/best.onnx",
+    "tensorrt_engine_path": "Model_train/best.engine",
+    "pool_size": 6,
+    "normalize": true,
+    "target_size": "320,320",
+    "conf_threshold": 0.25,
+    "iou_threshold": 0.45,
+    "rotate_bbox_clockwise": true,
+    "device": "auto",
+    "class_names": [
+      "cucur",
+      "kue ku",
+      "kue lapis",
+      "lemper",
+      "putri ayu",
+      "wajik"
+    ]
+  },
+  "ngrok": {
+    "enabled": true,
+    "path": "C:\\ngrok\\ngrok.exe",
+    "port": "8080",
+    "region": "ap"
+  },
+  "buffer": {
+    "enable_pool": true,
+    "max_size": 20,
+    "preallocate_count": 5
+  },
+  "memory": {
+    "enable_monitoring": true,
+    "check_interval": 3.0,
+    "warning_threshold": 60.0,
+    "critical_threshold": 75.0,
+    "enable_auto_gc": true,
+    "gc_threshold": 500,
+    "enable_tracemalloc": true,
+    "enable_alerting": true,
+    "enable_logging": false,
+    "log_file": "logs/memory.log"
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "json",
+    "directory": "logs"
+  },
+  "shutdown": {
+    "force_kill_after": 60,
+    "cleanup_temp_files": true,
+    "verify_shutdown": true
+  }
+}

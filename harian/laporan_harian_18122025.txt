@@ -1,0 +1,198 @@
+===============================================
+LAPORAN HARIAN
+===============================================
+Tanggal: 18 Desember 2025
+===============================================
+1. AKTIVITAS PENGEMBANGAN UTAMA
+===============================================
+
+1.1. Peningkatan UX & Visual Indikator PosAI:
+- Implementasi status visual koneksi AI yang lebih intuitif pada Header PosAI
+- Penggantian indikator teks statis ("Connected"/"Disconnected") dengan UI Button berbasis warna
+- Logika warna status: Merah (Terputus), Hijau (Terhubung), Abu-abu (Idle/Default)
+- Desain tombol "Slide-like" untuk memberikan kesan modern dan responsif
+
+1.2. Perbaikan Fundamental Navigasi & Low-Level System (ScanAI):
+- Perombakan total logika penanganan tombol "Back" fisik dan gesture Android 13+
+- Implementasi mekanisme "Double-Press to Exit" untuk mencegah penutupan tidak sengaja
+- Single Press sekarang memicu mode Background Service dengan notifikasi Toast informatif
+- Pembersihan service dan resource yang proper saat aplikasi benar-benar ditutup (Exit)
+
+1.3. Audit & Perbaikan Izin Aplikasi (Permissions):
+- Penghapusan permission microphone yang tidak digunakan untuk privasi yang lebih baik
+- Penambahan permission akses galeri/penyimpanan yang valid untuk fitur penyimpanan foto bukti
+- Perbaikan sistem Notifikasi Foreground Service yang sebelumnya tidak tampil atau icon hilang
+- Sinkronisasi warna indikator status pada notifikasi agar konsisten dengan status aplikasi
+
+1.4. Stabilisasi Koneksi WebSocket & Error Handling:
+- Perbaikan kritikal "undefined_method" pada `startListening` dan `clearItems` di PosAI
+- Resolusi error tipe generik pada inisialisasi WebSocketService di Splash Screen
+- Penanganan error async `await_in_wrong_context` yang menyebabkan crash pada root ScanAI
+- Validasi ulang alur komunikasi dua arah antara PosAI dan ScanAI
+
+1.5. Investigasi & Fix Autentikasi User (Login System):
+- Debugging mendalam masalah kegagalan login pada dashboard admin
+- Verifikasi integritas data kredensial dan role user di database SQLite pusat
+- Validasi flow reset password dan pembuatan user baru untuk memastikan siklus hidup akun berjalan
+- Pengecekan konektivitas ScanAI Server terhadap request login dari klien
+
+===============================================
+2. STATUS KONEKSI & PERFORMA HARI INI
+===============================================
+
+2.1. Stabilitas UI Indikator:
+- Transisi status Merah -> Hijau saat bridge terkoneksi berjalan real-time tanpa delay
+- Indikator visual terbukti lebih efektif bagi user dibandingkan log teks
+- Mekanisme polling status koneksi tidak membebani render cycle UI
+
+2.2. Manajemen Service Background:
+- Service ScanAI kini berjalan stabil di background tanpa dibunuh oleh OS (Android 13+)
+- Notifikasi persisten berfungsi sebagai "jangkar" service agar tetap hidup
+- Transisi dari background ke foreground berjalan mulus tanpa reload ulang
+
+===============================================
+3. IMPLEMENTASI KODE BARU
+===============================================
+
+3.1. Modul UI Components (PosAI):
+- File `posAI/lib/ui/widgets/ai_status_button.dart` (Baru):
+  - Widget khusus untuk menampilkan status koneksi dengan animasi warna
+  - Integrasi listener stream status dari WebSocketService
+- File `posAI/lib/ui/dashboard/dashboard_screen.dart`:
+  - Integrasi widget status baru ke dalam AppBar
+  - Pembersihan kode indikator teks lama
+
+3.2. Modul System Core (ScanAI):
+- File `scanai_app/lib/main.dart`:
+  - Implementasi Logic `PopScope` / `WillPopScope` handling
+  - Penambahan timer logic untuk deteksi double-tap exit
+- File `scanai_app/lib/services/background_service.dart`:
+  - Optimasi lifecycle service start/stop
+- File `scanai_app/android/app/src/main/AndroidManifest.xml`:
+  - Cleanup tag `<uses-permission>` (Hapus RECORD_AUDIO, Tambah READ_MEDIA_IMAGES)
+  - Konfigurasi foregroundServiceType
+
+3.3. Modul Komunikasi (PosAI & Shared):
+- File `posAI/lib/core/websocket/websocket_service.dart`:
+  - Perbaikan definisi method public yang dapat diakses oleh UI
+  - Type casting yang lebih aman untuk stream data
+- File `scanai_app/lib/core/utils/toast_utils.dart`:
+  - Standarisasi pesan toast untuk navigasi (Back foreground vs Exit)
+
+3.4. Modul Autentikasi (Backend & App):
+- Pengecekan pada endpoint Login di Go Server
+- Validasi parsing response token di sisi klien Flutter
+
+===============================================
+4. ANALISIS LOG APLIKASI
+===============================================
+
+4.1. Navigasi Logs:
+- Log "User pressed back. Moving to background" tercatat sukses saat single press
+- Log "User double pressed back. Exiting app..." tercatat saat double press
+- Tidak ada lagi log crash "Unhandled Exception" saat navigasi cepat
+
+4.2. WebSocket Logs:
+- Error "NoSuchMethodError: 'startListening'" telah hilang sepenuhnya
+- Handshake koneksi tercatat bersih: "WS Connected" -> "Listening to stream"
+- Reconnection attempt berjalan otomatis jika ScanAI direstart
+
+===============================================
+5. PERUBAHAN KESELURUHAN PROYEK
+===============================================
+
+5.1. Peningkatan Stabilitas User Experience (UX):
+- Mengubah perilaku aplikasi menjadi "Resilient" (Tahan banting) terhadap interaksi user
+- Aplikasi tidak lagi keluar tiba-tiba, memberikan rasa aman operasional bagi kasir
+- Feedback visual (Warna Status & Toast) memberikan kejelasan status sistem
+
+5.2. Keamanan & Kepatuhan Platform:
+- Aplikasi kini lebih patuh terhadap standar Android terbaru (Permissions)
+- Penghapusan izin sensitif (Mikrofon) meningkatkan kepercayaan pengguna/sistem
+- Manajemen background service yang sesuai standar Google mencegah "App Kill"
+
+===============================================
+6. IDENTIFIKASI MASALAH
+===============================================
+
+6.1. Masalah Terselesaikan (Fixed):
+- ✅ UX Fatal: Aplikasi keluar sendiri saat tombol back ditekan (Solved dengan Double-Back logic)
+- ✅ Functional Error: Crash saat dashboard PosAI dibuka karena method WS hilang (Solved)
+- ✅ Permission Error: Notifikasi tidak muncul dan akses galeri ditolak (Solved)
+- ✅ Visual Bug: Status koneksi yang ambigu/sulit dibaca (Solved dengan Color UI)
+
+6.2. Masalah Potensial / Pemantauan:
+- Perlu memantau konsumsi baterai dengan logic background service yang baru
+- Memastikan WebSocket tidak sleeping saat device layar mati dalam waktu lama (Doze mode)
+
+===============================================
+7. MASALAH KHUSUS UX NAVIGASI (SOLVED)
+===============================================
+
+7.1. Konteks Masalah:
+- User mengeluh aplikasi ScanAI sering tertutup tidak sengaja, memutus koneksi Bridge
+- Android 13+ memiliki gesture back yang agresif yang sering salah terdeteksi
+
+7.2. Solusi Komprehensif:
+- Implementasi `PopScope` (Flutter terbaru) menggantikan `WillPopScope` (Deprecated)
+- Logic Timer 2 detik: Tekan sekali -> Toast "Tekan lagi untuk keluar" -> Reset timer
+- Jika ditekan lagi dalam <2 detik -> Panggil `SystemNavigator.pop()` + Stop Service
+- Jika tidak -> Minimize App (`MoveTaskToBack`) agar server tetap jalan
+
+===============================================
+8. REKOMENDASI PERBAIKAN SELANJUTNYA
+===============================================
+
+8.1. Prioritas TINGGI:
+- Implementasi "Product Mapping": Menghubungkan label deteksi AI (Raw string) dengan Product ID database real
+- Finalisasi fitur "Add to Cart" otomatis trigger dari deteksi WebSocket stabil
+- Test flow transaksi penuh: Scan -> Cart -> Checkout -> Print Struk -> Save DB
+
+8.2. Prioritas SEDANG:
+- Pembuatan pengaturan sensitivitas Back Button (Opsional)
+- Implementasi fitur "Keep Screen On" saat mode PosAI aktif untuk mencegah sleep
+- Refactoring kode Go Server untuk memisahkan logic transaksi lebih modular
+
+===============================================
+9. STATISTIK PROYEK
+===============================================
+
+9.1. Metrik Kode Hari Ini:
+- Perbaikan bug kritis: 4 isu mayor (Back logic, Permission, WS Function, Login)
+- Penambahan UI Widget baru: 1 Komponen (AIStatusButton)
+- Modifikasi file konfigurasi sistem: 2 File (Manifest & Gradle settings)
+
+9.2. Kualitas Experience:
+- UX Rating: Meningkat signifikan (Navigasi aman + Status jelas)
+- Reliability: Service background lebih terjamin hidupnya
+- Privacy: Permission footprint berkurang (No Mic access)
+
+===============================================
+10. PENCAPAIAN HARI INI
+===============================================
+
+✅ Selesai:
+- Refactoring total UX Back Button & Background Service Management
+- Perbaikan sistem Notifikasi & Permission Android 13
+- Implementasi Visual UI untuk Status Koneksi AI (Merah/Hijau)
+- Fixing Crash Kritikal pada inisialisasi WebSocket Service
+- Audit Login & User Management System
+- Penyusunan laporan dokumentasi harian yang komprehensif
+
+===============================================
+11. RENCANA BESOK (19 Desember 2025)
+===============================================
+
+11.1. Integrasi Data Produk Real (Pagi):
+- [ ] Implementasi `ProductMapper` untuk mencocokkan string AI dengan DB Barang
+- [ ] Setup Cache Produk di lokal PosAI untuk lookup cepat (mengurangi request server)
+
+11.2. Fitur Transaksi Inti (Siang):
+- [ ] Implementasi Logic `CartProvider` yang lebih kompleks (Add/Remove/Update Qty)
+- [ ] Integrasi perhitungan total harga real-time berdasarkan data mapper
+- [ ] UI Finalisasi untuk halaman Checkout
+
+11.3. Testing & Hardening (Sore):
+- [ ] Stress Test Background Service (Dibiarkan running 1+ jam)
+- [ ] Simulasi transaksi dengan 10+ item sekaligus
+- [ ] Backup & Restore data user check

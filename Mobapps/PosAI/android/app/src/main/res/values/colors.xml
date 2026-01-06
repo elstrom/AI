@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="status_connected">#4CAF50</color> <!-- Green -->
+    <color name="status_disconnected">#F44336</color> <!-- Red -->
+    <color name="status_idle">#9E9E9E</color>      <!-- Gray -->
+</resources>

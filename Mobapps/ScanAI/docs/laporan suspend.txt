@@ -1,0 +1,103 @@
+Permohonan Tindakan: Aplikasi tidak mematuhi Kebijakan Google Play – (Scanai)
+Kepada: info@eruu.net
+
+Email ini dikirim kepada pemilik akun
+
+Informasi Terbaru untuk Developer Google Play
+
+Kepada Yth. Developer lulanet,
+
+Setelah meninjau aplikasi Anda Scanai (nama paket: com.banwibu.scanai), kami menemukan bahwa aplikasi tersebut tidak mematuhi satu atau lebih kebijakan Google Play. Akibatnya, status aplikasi Anda terdampak.
+
+Status Publikasi
+
+Status aplikasi: Dihentikan
+
+Aplikasi Anda telah dihentikan distribusinya dan dihapus dari Google Play karena masalah kebijakan berikut.
+
+👉 Buka Google Play Console
+
+Masalah yang Ditemukan
+
+Pelanggaran kebijakan terkait Proses Penegakan (Enforcement Process)
+
+Aplikasi Anda mengandung konten yang tidak sesuai dengan Kebijakan Program Developer.
+
+Detail Masalah
+
+Masalah ditemukan pada item berikut:
+
+Pengalaman dalam aplikasi: “Repeated app rejections”
+(Penolakan aplikasi yang berulang)
+
+Langkah untuk Memperbaiki Agar Sesuai Kebijakan
+
+Tinjau detail pada:
+
+Kebijakan Proses Penegakan
+
+Kebijakan Program Developer
+
+Perjanjian Penjualan / Distribusi Developer
+
+Jika akun developer Anda masih dalam kondisi baik, silakan:
+
+Login ke Google Play Console
+
+Kirim aplikasi yang telah diperbaiki dan sudah sesuai kebijakan
+
+Gunakan nama paket baru dan nama aplikasi baru
+
+Tentang Kebijakan Proses Penegakan
+
+Aplikasi yang berulang kali melanggar Kebijakan Program Developer tidak diperbolehkan.
+
+Penghentian dapat terjadi bukan hanya karena:
+
+Penolakan atau penghapusan yang berulang, tetapi juga karena
+
+Pelanggaran kebijakan yang serius, atau
+
+Beberapa pelanggaran kebijakan sekaligus
+
+⚠️ Jika terjadi pelanggaran kebijakan lagi, akun Developer Google Play Anda dan akun terkait lainnya dapat ditangguhkan.
+
+Untuk detail lebih lanjut mengenai hasil peninjauan kebijakan, silakan lihat artikel Pusat Bantuan terkait.
+
+Mengajukan Permohonan Peninjauan Ulang
+
+Jika Anda yakin keputusan Google ini keliru, Anda dapat mengajukan permohonan peninjauan ulang.
+
+Waktu tanggapan: sekitar 7 hari
+(dalam beberapa kasus bisa lebih lama)
+
+👉 Kirim Permohonan Peninjauan Ulang
+
+Informasi Tambahan
+
+Untuk detail lebih lanjut tentang proses penegakan pelanggaran, silakan lihat artikel Pusat Bantuan “Proses Penegakan Pelanggaran”.
+
+Untuk informasi kebijakan terbaru Google Play, silakan lihat #PolicyBytes untuk Developer Android.
+Anda dapat mengganti bahasa melalui pengaturan trek audio.
+
+Terima kasih atas kerja sama Anda dalam menjaga Google Play tetap menjadi platform yang aman dan nyaman bagi developer dan pengguna.
+
+Kami mohon kesediaan Anda untuk menjawab 2 pertanyaan survei berikut. Jawaban Anda akan digunakan untuk meningkatkan layanan Google Play.
+
+Hormat kami,
+Tim Google Play
+
+Play Academy
+© 2025 Google LLC
+1600 Amphitheatre Parkway, Mountain View, CA 94043
+
+Policy status
+Manage your compliance with Google Play Developer Program policies. Learn more
+Summary
+Status
+App suspended
+Suspended
+Jan 2, 2026, 12:04 AM
+Details
+Your app, including all previous versions, has been removed from Google Play, and is no longer available for new users to download. Your installs, statistics, and ratings for this app have also been removed from Play Console. Learn more about why apps are removed.
+We've sent more information to the account owner's email address.

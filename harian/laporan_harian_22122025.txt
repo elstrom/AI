@@ -1,0 +1,161 @@
+===============================================
+LAPORAN HARIAN
+===============================================
+Tanggal: 22 Desember 2025
+===============================================
+1. AKTIVITAS PENGEMBANGAN UTAMA
+===============================================
+
+1.1. Perbaikan Kritis Deteksi & Null Safety (ScanAI Server):
+- Mengatasi crash aplikasi Flutter (`CheckedFromJsonException`) yang disebabkan oleh penerimaan nilai `null` pada koordinat bounding box (`x_min`, `x_max`).
+- Analisis mendalam menemukan akar masalah pada Go standard library `protojson` yang menggunakan flag `omitempty`, menyebabkan nilai `0.0` tidak dikirim ke klien.
+- Menghapus solusi sementara "Epsilon Hack" (menambah `1e-6` pada koordinat) di Python server `grpc_server.py` untuk menjaga kemurnian data.
+- Mengimplementasikan solusi permanen di `server.go` dengan membangun konstruksi JSON map secara manual sebelum dikirim via WebSocket/UDP, menjamin integritas data (0.0 tetap terkirim sebagai angka).
+
+1.2. Optimasi Sistem Logging (Log Throttling & Cleanup):
+- Merombak total strategi logging dari *Global Throttling* ke *Key-Based Throttling* di seluruh stack (Go, Python, Dart).
+- **Flutter (`logger.dart`):** Implementasi parameter `throttleKey` dan `throttleInterval`. Log status buffer dan metrics kini hanya muncul berkala, mencegah lag UI.
+- **Go Server (`logger.go`):** Penambahan fungsi `InfoThrottled` dengan `sync.Mutex` untuk thread-safety. Log parsing frame UDP kini lebih terkontrol.
+- **Python Thread Pool (`thread_pool.py`):** Menghapus log spam `[TASK #] Submitted` yang membanjiri terminal setiap 10 tugas, digantikan dengan log "Task Done" yang real-time.
+- Pembersihan *Dead Code*: Menghapus parameter `log_interval` yang membingungkan dari `config.json` dan konstruktor server.
+
+1.3. Kepatuhan & Persiapan Rilis Play Store (Android 15 Readienss):
+- **Isu Page Size 16KB:** Aplikasi ditolak karena tidak kompatibel dengan arsitektur memori Android 15. Solusi: Menambahkan `android:extractNativeLibs="true"` pada `AndroidManifest.xml` untuk memaksa ekstraksi library native.
+- **Dependency Cleanup:** Menghapus library `flutter_isolate` di `pubspec.yaml` yang terindikasi menyebabkan konflik build.
+- **Privasi Permissions:** Menghapus `READ_MEDIA_IMAGES` karena aplikasi hanya mengakses file buatannya sendiri (Android 10+ compliant).
+- **Deklarasi Foreground Service:** Menyusun deskripsi teknis untuk permission `FOREGROUND_SERVICE_CAMERA` (untuk streaming background) dan `SPECIAL_USE` (koneksi lokal POS) guna form deklarasi Play Console.
+
+1.4. Implementasi Login Bypass untuk Reviewer:
+- Mengaktifkan `enablePlayStoreReviewMode = true` di `app_constants.dart` (ScanAI) dan `app_config.dart` (PosAI).
+- Modifikasi `auth_service.dart`: Logika login kini mendeteksi flag ini. Jika aktif, proses autentikasi ke server dilewati, dan sesi user dummy "Review User" dibuat otomatis.
+- Memastikan reviewer Google bisa masuk langsung ke dashboard tanpa kredensial valid atau koneksi server lokal.
+
+1.5. Analisis Mendalam Proyek Baru (AbsensiDev - Payroll):
+- **Tech Stack:** Angular 17 (Standalone Components), Angular Material, Firebase (Firestore, Auth, Storage).
+- **Arsitektur Data:** Terpusat pada `MasukindataService`. Struktur tabel:
+  - `cl000members`: Data karyawan & role.
+  - `cl005wrkdaly`: Log kerja harian (Check-in/out, durasi `qg022duratio`, lembur `qg023overdur`).
+  - `cl007project`: Generator ID unik "JAN-13" (Base 12 + Check Digit).
+- **Logika Sistem Penggajian (Payroll):**
+  - Konsep "Hidden Hourly Rate": Gaji per jam hitungan internal, tidak tampil di slip.
+  - Rumus Lembur: `1.5x` (jam pertama) -> `2.0x` (jam berikutnya).
+  - Hirarki Potongan (Alpha): Potong Cuti -> Potong Upah Lembur -> Potong Gaji Pokok.
+
+===============================================
+2. STATUS KONEKSI & PERFORMA HARI INI
+===============================================
+
+2.1. Stabilitas Lintas Platform:
+- Simulasi Start-up penuh berhasil: Python AI (50051), Go Server (8080), dan Flutter Client terkoneksi mulus.
+- Isu "Indentation Error" fatal pada Python `grpc_server.py` (variabel `enable_monitoring` undefined) telah diperbaiki dengan memindahkan method `_log_throttled` ke scope class yang benar.
+
+2.2. Kualitas Log (Observability):
+- Traffic log berkurang signifikan (dari ratusan baris/detik menjadi output status per 10 detik).
+- Log kritikal (Error/Warning) tetap muncul *real-time* (tidak kena throttle), memudahkan debugging instan.
+
+===============================================
+3. IMPLEMENTASI KODE BARU (DETAIL)
+===============================================
+
+3.1. ScanAI Server (Backend):
+- **File `server.go`:** Refactoring logika broadcast `AiResults`. Mengganti `protojson.Marshal` dengan konstruksi `map[string]interface{}` manual.
+- **File `logger.go`:** Implementasi `WaitMap` dan `Mutex` untuk pelacakan waktu log terakhir per kunci unik.
+
+3.2. AI System (Python):
+- **File `grpc_server.py`:** Perbaikan struktural class `AIService`. Implementasi dictionary untuk tracking interval log per tipe deteksi.
+- **File `thread_pool.py`:** Penghapusan baris kode logging yang redundan pada fungsi `submit_task`.
+
+3.3. Mobile Apps (ScanAI & PosAI):
+- **Manifest (`AndroidManifest.xml`):** Inject atribut `android:extractNativeLibs="true"` pada tag `<application>`.
+- **Config (`app_constants.dart`):** Toggle `enablePlayStoreReviewMode`.
+- **Utils (`logger.dart`):** Logic baru: `if (now - lastLogTime > interval) { print; updateTime; }`.
+
+===============================================
+4. ANALISIS LOG APLIKASI
+===============================================
+
+4.1. Security & Compliance:
+- Log "Review Mode Active" terkonfirmasi muncul saat aplikasi start. Bypass login berfungsi aman, tidak membocorkan data asli.
+- Exception `CheckedFromJsonException` hilang total pada scenario test dengan objek kosong/valid.
+
+4.2. Build & Deploy:
+- Error build Gradle terkait "16 KB Page sizes" terselesaikan. APK generated sukses dengan native libs ter-ekstrak.
+- Version Code di-increment ke `2011` di `pubspec.yaml` untuk menghindari konflik "Shadowed APK" di Console.
+
+===============================================
+5. PERUBAHAN KESELURUHAN PROYEK
+===============================================
+
+5.1. Peningkatan Kualitas Produksi (Production Quality):
+- Aplikasi kini memenuhi standar ketat Google Play (Architecture, Permissions, Page Sizes).
+- Sistem backend lebih efisien resource (CPU/IO) berkat pengurangan operasi I/O logging yang agresif.
+
+5.2. Skalabilitas Kode:
+- Struktur logging baru memungkinkan penambahan modul lain di masa depan tanpa takut "spamming console".
+- Perbaikan arsitektur data Go server (Manual JSON) lebih tahan terhadap perubahan definisi Protobuf.
+
+===============================================
+6. IDENTIFIKASI MASALAH & FIXES
+===============================================
+
+6.1. Masalah Terselesaikan (Completed Fixes):
+- **CRITICAL BUG:** Flutter Crash akibat Null BBox values dari Go Server (Solved: Manual Mapping).
+- **BUILD ERROR:** Penolakan Google Play isu "16KB Page Alignment" (Solved: extractNativeLibs).
+- **LOGGING:** Console dibanjiri log "Task Submitted" & status berulang (Solved: Throttling & Cleanup).
+- **PYTHON BUG:** `NameError: enable_monitoring` akibat kesalahan indentasi (Solved).
+- **GO BUILD:** Syntax error `null` vs `nil` & unused variable `isBinary` (Solved).
+
+6.2. Area Pemantauan:
+- Perlu memastikan Logic "Hidden Hourly Rate" pada proyek baru terhitung presisi desimalnya saat implementasi nanti.
+
+===============================================
+7. REKOMENDASI PERBAIKAN SELANJUTNYA
+===============================================
+
+7.1. Prioritas TINGGI (Deployment iOS):
+- **Setup Lingkungan Build:** Konfigurasi Mac Mini/Macbook Pro dengan Xcode terbaru.
+- **Certificates & Provisioning:** Generate sertifikat distribusi Apple Developer dan Profile yang sesuai.
+- **Transporter App:** Persiapan tools untuk upload `.ipa` ke App Store Connect.
+
+7.2. Prioritas SEDANG (Proyek AbsensiDev):
+- Membuat *Mockup* perhitungan gaji di Excel/Spreadsheet untuk validasi rumus sebelum coding.
+- Implementasi skeleton service `PayrollService` di Angular.
+
+===============================================
+8. STATISTIK PROYEK
+===============================================
+
+8.1. Metrik Harian:
+- **Files Modified:** ~12 File (Lintas 3 Bahasa: Go, Python, Dart).
+- **Major Issues Resolved:** 5 (Crash, Build, Log, Syntax, Compliance).
+- **New Project Onboarded:** 1 (Analisis mendalam AbsensiDev).
+
+===============================================
+9. PENCAPAIAN HARI INI
+===============================================
+
+**Sistem Deteksi:** Stabil 100%, data BBox presisi, anti-null crash.
+**Observability:** Log sistem bersih, informatif, dan tidak membebani performa.
+**Play Store Ready:** App memenuhi standar Android 15, privacy compliant, dan review-friendly (login bypass).
+**Knowledge Base:** Pemahaman penuh arsitektur proyek baru (Payroll Angular + Firebase).
+
+===============================================
+10. RENCANA BESOK (23 Desember 2025)
+===============================================
+
+10.1. Persiapan Infrastruktur iOS (ScanAI & PosAI) - Pagi:
+- [ ] **Environment Audit:** Pengecekan versi macOS, Xcode, dan Ruby/CocoaPods di mesin build.
+- [ ] **Dependency Setup:** Menjalankan `flutter clean` & `flutter pub get` serta `pod install` di direktori `ios/`.
+- [ ] **Compliance Check:** Memastikan `Info.plist` sudah memiliki deskripsi penggunaan permission yang valid (Camera, Photo Library) agar tidak ditolak App Store.
+- [ ] **Signing Configuration:** Mengatur "Automatically manage signing" di Xcode dengan akun Apple Developer yang valid.
+
+10.2. Build & Release Pipeline (iOS) - Siang:
+- [ ] **Archive Build:** Melakukan build archive `.ipa` release melalui Xcode.
+- [ ] **App Store Connect:** Membuat entry aplikasi baru di App Store Connect (metadata dasar).
+- [ ] **Upload via Transporter/Xcode:** Mengunggah hasil build ke TestFlight.
+- [ ] **Internal Testing:** Memastikan aplikasi bisa diinstal dan dijalankan di iPhone test device via TestFlight.
+
+10.3. Proyek Baru AbsensiDev (Payroll System) - Sore:
+- [ ] **Database Prototyping:** Membuat struktur collection dummy `cl020payroll` di Firebase Console dev.
+- [ ] **Logic Validation:** Membuat script sederhana (Typescript/JS) untuk men-simulasikan perhitungan "Hidden Hourly Rate" dan potongan Alpha sesuai rumus bisnis.
+- [ ] **UI Component:** Membuat skeleton komponen `PayrollCalculator` di proyek Angular.

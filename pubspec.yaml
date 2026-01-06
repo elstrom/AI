@@ -1,0 +1,9 @@
+name: websocket_test
+description: A WebSocket test tool for validating Go server connectivity
+version: 1.0.0
+
+environment:
+  sdk: '>=2.19.0 <4.0.0'
+
+dependencies:
+  web_socket_channel: ^2.4.0

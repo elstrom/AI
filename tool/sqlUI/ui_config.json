@@ -1,0 +1,22 @@
+{
+  "database": {
+    "path": "d:\\Gawe\\AI\\ScanAI_server\\Serv_ScaI\\scanai.db",
+    "recent_connections": [
+      "d:\\Gawe\\AI\\ScanAI_server\\Serv_ScaI\\scanai.db"
+    ]
+  },
+  "ui": {
+    "window_width": 1200,
+    "window_height": 800,
+    "theme": "default",
+    "font_family": "Consolas",
+    "font_size": 10,
+    "rows_per_page": 50,
+    "tail_rows": 10
+  },
+  "export": {
+    "default_format": "txt",
+    "include_headers": true,
+    "delimiter": "\t"
+  }
+}
